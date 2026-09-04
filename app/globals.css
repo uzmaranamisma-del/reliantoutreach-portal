@@ -84,6 +84,121 @@
 .domain-actions .primary-action {
   margin: 0;
 }
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.secondary-action {
+  height: 38px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d6dfe4;
+  border-radius: 6px;
+  background: #fff;
+  color: #334653;
+  font-weight: 650;
+}
+.domain-import-dialog {
+  max-width: 600px !important;
+}
+.domain-dropzone {
+  width: 100%;
+  min-height: 154px;
+  margin-top: 8px;
+  border: 1.5px dashed #b8c8ce;
+  border-radius: 8px;
+  background: #f8fbfb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #405661;
+}
+.domain-dropzone svg {
+  color: #176d66;
+}
+.domain-dropzone b {
+  font-size: 15px;
+}
+.domain-dropzone span {
+  font-size: 13px;
+  color: #72828b;
+}
+.domain-preview {
+  margin-top: 14px;
+  border: 1px solid #e0e7ea;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.domain-preview > div {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f7f9fa;
+}
+.domain-preview button {
+  border: 0;
+  background: transparent;
+  color: #73828a;
+}
+.domain-preview button svg {
+  width: 16px;
+}
+.domain-preview ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.domain-preview li {
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #edf1f2;
+  font-size: 14px;
+}
+.domain-preview li em {
+  color: #176d66;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+}
+.domain-preview p {
+  padding: 8px 12px;
+  margin: 0;
+  color: #74848c;
+  font-size: 13px;
+  border-top: 1px solid #edf1f2;
+}
+.domain-import-result {
+  padding: 28px 0 8px;
+  text-align: center;
+}
+.domain-import-result > svg {
+  width: 42px;
+  height: 42px;
+  color: #176d66;
+}
+.domain-import-result h3 {
+  margin: 10px 0 3px;
+  font-size: 20px;
+}
+.domain-import-result p {
+  margin: 0;
+  color: #45606a;
+}
+.domain-import-result div {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 14px 0 20px;
+  color: #74848c;
+  font-size: 13px;
+}
 .auth-page {
   min-height: 100vh;
   display: grid;

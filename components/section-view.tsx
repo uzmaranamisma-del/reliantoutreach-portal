@@ -24,6 +24,7 @@ import {
 import { useEffect, useState } from 'react';
 import CsvImport from '@/components/csv-import';
 import AddDomain from '@/components/add-domain';
+import DomainImport from '@/components/domain-import';
 const nav = [
   [LayoutDashboard, 'Dashboard', 'dashboard'],
   [Users, 'Prospects', 'prospects'],
@@ -276,6 +277,7 @@ export default function SectionView({ section }: { section: string }) {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [domainOpen, setDomainOpen] = useState(false);
+  const [domainImportOpen, setDomainImportOpen] = useState(false);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
   useEffect(() => {
@@ -351,20 +353,30 @@ export default function SectionView({ section }: { section: string }) {
               <span>{page.subtitle}</span>
             </div>
             {page.action && (
-              <button
-                className="primary-action"
-                onClick={() => {
-                  if (section === 'prospects') setImportOpen(true);
-                  if (section === 'domains') setDomainOpen(true);
-                }}
-              >
-                {section === 'files' ? (
-                  <Upload size={16} />
-                ) : (
-                  <Plus size={16} />
-                )}{' '}
-                {page.action}
-              </button>
+              <div className="section-actions">
+                {section === 'domains' && (
+                  <button
+                    className="secondary-action"
+                    onClick={() => setDomainImportOpen(true)}
+                  >
+                    <Upload size={16} /> Import CSV
+                  </button>
+                )}
+                <button
+                  className="primary-action"
+                  onClick={() => {
+                    if (section === 'prospects') setImportOpen(true);
+                    if (section === 'domains') setDomainOpen(true);
+                  }}
+                >
+                  {section === 'files' ? (
+                    <Upload size={16} />
+                  ) : (
+                    <Plus size={16} />
+                  )}{' '}
+                  {page.action}
+                </button>
+              </div>
             )}
           </div>
           <div className="toolbar">
@@ -423,11 +435,20 @@ export default function SectionView({ section }: { section: string }) {
         />
       )}
       {section === 'domains' && (
-        <AddDomain
-          open={domainOpen}
-          onOpenChange={setDomainOpen}
-          onAdded={(row) => setDisplayRows((previous) => [row, ...previous])}
-        />
+        <>
+          <AddDomain
+            open={domainOpen}
+            onOpenChange={setDomainOpen}
+            onAdded={(row) => setDisplayRows((previous) => [row, ...previous])}
+          />
+          <DomainImport
+            open={domainImportOpen}
+            onOpenChange={setDomainImportOpen}
+            onImported={(rows) =>
+              setDisplayRows((previous) => [...rows, ...previous])
+            }
+          />
+        </>
       )}
     </main>
   );
