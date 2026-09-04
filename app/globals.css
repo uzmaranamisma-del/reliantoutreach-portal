@@ -199,6 +199,42 @@
   color: #74848c;
   font-size: 13px;
 }
+.email-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 12px;
+  margin-top: 14px;
+}
+.email-form-grid label {
+  display: grid;
+  gap: 6px;
+  color: #344b56;
+  font-weight: 650;
+  font-size: 13px;
+}
+.email-form-grid input {
+  height: 42px;
+  border: 1px solid #d8e1e5;
+  border-radius: 6px;
+  padding: 0 11px;
+  outline: none;
+  font-weight: 400;
+}
+.email-form-grid input:focus {
+  border-color: #176d66;
+  box-shadow: 0 0 0 3px #176d6618;
+}
+@media (max-width: 600px) {
+  .email-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .section-actions {
+    width: 100%;
+  }
+  .section-actions button {
+    flex: 1;
+  }
+}
 .auth-page {
   min-height: 100vh;
   display: grid;

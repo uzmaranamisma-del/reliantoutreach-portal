@@ -25,6 +25,10 @@ import { useEffect, useState } from 'react';
 import CsvImport from '@/components/csv-import';
 import AddDomain from '@/components/add-domain';
 import DomainImport from '@/components/domain-import';
+import {
+  AddEmailAccount,
+  ImportEmailAccounts,
+} from '@/components/email-account-manager';
 const nav = [
   [LayoutDashboard, 'Dashboard', 'dashboard'],
   [Users, 'Prospects', 'prospects'],
@@ -137,6 +141,7 @@ const content: Record<
   'email-accounts': {
     title: 'Email Accounts',
     subtitle: 'Monitor sending capacity and account health.',
+    action: 'Add email account',
     headers: [
       'Email account',
       'Domain',
@@ -278,6 +283,8 @@ export default function SectionView({ section }: { section: string }) {
   const [importOpen, setImportOpen] = useState(false);
   const [domainOpen, setDomainOpen] = useState(false);
   const [domainImportOpen, setDomainImportOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailImportOpen, setEmailImportOpen] = useState(false);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
   useEffect(() => {
@@ -333,6 +340,33 @@ export default function SectionView({ section }: { section: string }) {
         );
     });
   }, [section]);
+  useEffect(() => {
+    if (section !== 'email-accounts') return;
+    void fetch('/api/email-accounts').then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        accounts: Array<{
+          email: string;
+          domain: string;
+          status: string;
+          dailyLimit: number | null;
+          sentToday: number;
+          health: string;
+        }>;
+      };
+      if (data.accounts.length)
+        setDisplayRows(
+          data.accounts.map((account) => [
+            account.email,
+            account.domain,
+            account.status === 'registered' ? 'Registered' : account.status,
+            String(account.dailyLimit || 35),
+            String(account.sentToday),
+            account.health === 'pending' ? 'Pending' : account.health,
+          ]),
+        );
+    });
+  }, [section]);
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#142033]">
       <Aside active={section} open={open} />
@@ -354,10 +388,14 @@ export default function SectionView({ section }: { section: string }) {
             </div>
             {page.action && (
               <div className="section-actions">
-                {section === 'domains' && (
+                {(section === 'domains' || section === 'email-accounts') && (
                   <button
                     className="secondary-action"
-                    onClick={() => setDomainImportOpen(true)}
+                    onClick={() =>
+                      section === 'domains'
+                        ? setDomainImportOpen(true)
+                        : setEmailImportOpen(true)
+                    }
                   >
                     <Upload size={16} /> Import CSV
                   </button>
@@ -367,6 +405,7 @@ export default function SectionView({ section }: { section: string }) {
                   onClick={() => {
                     if (section === 'prospects') setImportOpen(true);
                     if (section === 'domains') setDomainOpen(true);
+                    if (section === 'email-accounts') setEmailOpen(true);
                   }}
                 >
                   {section === 'files' ? (
@@ -444,6 +483,22 @@ export default function SectionView({ section }: { section: string }) {
           <DomainImport
             open={domainImportOpen}
             onOpenChange={setDomainImportOpen}
+            onImported={(rows) =>
+              setDisplayRows((previous) => [...rows, ...previous])
+            }
+          />
+        </>
+      )}
+      {section === 'email-accounts' && (
+        <>
+          <AddEmailAccount
+            open={emailOpen}
+            onOpenChange={setEmailOpen}
+            onAdded={(row) => setDisplayRows((previous) => [row, ...previous])}
+          />
+          <ImportEmailAccounts
+            open={emailImportOpen}
+            onOpenChange={setEmailImportOpen}
             onImported={(rows) =>
               setDisplayRows((previous) => [...rows, ...previous])
             }
