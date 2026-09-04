@@ -37,6 +37,7 @@
     "jsx-a11y/anchor-is-valid": "off",
     "jsx-a11y/prefer-tag-over-role": "off",
     "jsx-a11y/control-has-associated-label": "off",
+    "nextjs/no-html-link-for-pages": "off",
     "no-array-constructor": "error",
     "no-var": "error",
     "prefer-const": "error",
