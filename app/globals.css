@@ -815,6 +815,114 @@ a {
   gap: 17px;
   margin-bottom: 17px;
 }
+.active-package {
+  display: grid;
+  grid-template-columns: minmax(250px, 1.2fr) minmax(150px, 0.55fr) minmax(
+      260px,
+      1fr
+    ) auto;
+  align-items: center;
+  gap: 24px;
+  margin: 15px 0 17px;
+  padding: 18px 20px;
+  border: 1px solid #dbe4e7;
+  border-left: 4px solid #176d66;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px #14203308;
+}
+.package-identity {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.package-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #e8f4f2;
+  color: #176d66;
+}
+.package-identity p {
+  margin: 0 0 2px;
+  color: #74848d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.package-identity h2 {
+  margin: 0;
+  color: #17283d;
+  font-size: 18px;
+  line-height: 1.25;
+}
+.package-identity div > span {
+  color: #7b8a92;
+  font-size: 12px;
+}
+.package-price {
+  padding-left: 22px;
+  border-left: 1px solid #e5eaec;
+}
+.package-price > span,
+.package-credits span {
+  display: block;
+  color: #70818a;
+  font-size: 12px;
+}
+.package-price strong {
+  display: block;
+  margin-top: 4px;
+  color: #17283d;
+  font-size: 21px;
+}
+.package-price small {
+  color: #7a8991;
+  font-size: 12px;
+  font-weight: 500;
+}
+.package-credits > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.package-credits > div:first-child b {
+  color: #17283d;
+  font-size: 14px;
+}
+.credits-track {
+  height: 7px;
+  margin: 7px 0 6px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #e7edef;
+}
+.credits-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #176d66;
+}
+.package-credits p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 11px;
+}
+.package-credits p b {
+  color: #405660;
+}
+.package-credits p span {
+  color: #7b8b93;
+}
+.active-package > a {
+  color: #176d66;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .panel {
   background: white;
   border: 1px solid var(--border);
@@ -1061,6 +1169,12 @@ td button {
   display: none;
 }
 @media (max-width: 1180px) {
+  .active-package {
+    grid-template-columns: 1fr 1fr;
+  }
+  .active-package > a {
+    justify-self: end;
+  }
   .metric-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1286,6 +1400,17 @@ td button {
   margin: 18px auto 0;
 }
 @media (max-width: 600px) {
+  .active-package {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .package-price {
+    padding: 0;
+    border-left: 0;
+  }
+  .active-package > a {
+    justify-self: start;
+  }
   .csv-dialog {
     padding: 18px !important;
   }
