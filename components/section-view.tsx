@@ -416,7 +416,7 @@ function Aside({ active, open }: { active: string; open: boolean }) {
         <p className="nav-label">WORKSPACE</p>
         {nav.map(([Icon, label, path]) => (
           <a
-            href={path === 'dashboard' ? '/' : `/${path}`}
+            href={`/${path}`}
             className={path === active ? 'active' : ''}
             key={path}
           >
