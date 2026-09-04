@@ -29,6 +29,7 @@ import {
   AddEmailAccount,
   ImportEmailAccounts,
 } from '@/components/email-account-manager';
+import IntegrationSettings from '@/components/integration-settings';
 const nav = [
   [LayoutDashboard, 'Dashboard', 'dashboard'],
   [Users, 'Prospects', 'prospects'],
@@ -418,50 +419,56 @@ export default function SectionView({ section }: { section: string }) {
               </div>
             )}
           </div>
-          <div className="toolbar">
-            <div className="section-search">
-              <Search size={16} />
-              <input
-                aria-label={`Search ${page.title}`}
-                placeholder={`Search ${page.title.toLowerCase()}…`}
-              />
-            </div>
-            <button>
-              <Filter size={15} /> Filter
-            </button>
-            <button>
-              <Download size={15} /> Export
-            </button>
-          </div>
-          <section className="panel section-table">
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    {page.headers.map((h) => (
-                      <th key={h}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayRows.map((row, i) => (
-                    <tr key={i}>
-                      {row.map((cell, j) => (
-                        <td key={j}>{j === 0 ? <b>{cell}</b> : cell}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="table-footer">
-              <span>Showing {displayRows.length} records</span>
-              <div>
-                <button disabled>Previous</button>
-                <button>Next</button>
+          {section === 'settings' ? (
+            <IntegrationSettings />
+          ) : (
+            <>
+              <div className="toolbar">
+                <div className="section-search">
+                  <Search size={16} />
+                  <input
+                    aria-label={`Search ${page.title}`}
+                    placeholder={`Search ${page.title.toLowerCase()}…`}
+                  />
+                </div>
+                <button>
+                  <Filter size={15} /> Filter
+                </button>
+                <button>
+                  <Download size={15} /> Export
+                </button>
               </div>
-            </div>
-          </section>
+              <section className="panel section-table">
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        {page.headers.map((h) => (
+                          <th key={h}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayRows.map((row, i) => (
+                        <tr key={i}>
+                          {row.map((cell, j) => (
+                            <td key={j}>{j === 0 ? <b>{cell}</b> : cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="table-footer">
+                  <span>Showing {displayRows.length} records</span>
+                  <div>
+                    <button disabled>Previous</button>
+                    <button>Next</button>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </section>
       {section === 'prospects' && (
