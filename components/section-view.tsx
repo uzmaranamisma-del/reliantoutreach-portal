@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import CsvImport from '@/components/csv-import';
+import AddDomain from '@/components/add-domain';
 const nav = [
   [LayoutDashboard, 'Dashboard', 'dashboard'],
   [Users, 'Prospects', 'prospects'],
@@ -274,6 +275,7 @@ const content: Record<
 export default function SectionView({ section }: { section: string }) {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [domainOpen, setDomainOpen] = useState(false);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
   useEffect(() => {
@@ -303,6 +305,32 @@ export default function SectionView({ section }: { section: string }) {
       );
     });
   }, [section]);
+  useEffect(() => {
+    if (section !== 'domains') return;
+    void fetch('/api/domains').then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        domains: Array<{
+          domain: string;
+          status: string;
+          spfStatus: string | null;
+          dkimStatus: string | null;
+          dmarcStatus: string | null;
+        }>;
+      };
+      if (data.domains.length)
+        setDisplayRows(
+          data.domains.map((item) => [
+            item.domain,
+            item.status,
+            item.spfStatus ?? 'Pending',
+            item.dkimStatus ?? 'Selector needed',
+            item.dmarcStatus ?? 'Pending',
+            '0',
+          ]),
+        );
+    });
+  }, [section]);
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#142033]">
       <Aside active={section} open={open} />
@@ -325,7 +353,10 @@ export default function SectionView({ section }: { section: string }) {
             {page.action && (
               <button
                 className="primary-action"
-                onClick={() => section === 'prospects' && setImportOpen(true)}
+                onClick={() => {
+                  if (section === 'prospects') setImportOpen(true);
+                  if (section === 'domains') setDomainOpen(true);
+                }}
               >
                 {section === 'files' ? (
                   <Upload size={16} />
@@ -389,6 +420,13 @@ export default function SectionView({ section }: { section: string }) {
           onImport={(newRows) =>
             setDisplayRows((previous) => [...newRows, ...previous])
           }
+        />
+      )}
+      {section === 'domains' && (
+        <AddDomain
+          open={domainOpen}
+          onOpenChange={setDomainOpen}
+          onAdded={(row) => setDisplayRows((previous) => [row, ...previous])}
         />
       )}
     </main>

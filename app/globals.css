@@ -9,6 +9,81 @@
   --primary: #186d67;
   --radius: 0.55rem;
 }
+.domain-dialog {
+  max-width: 520px !important;
+  padding: 24px !important;
+  background: #fff !important;
+}
+.domain-label {
+  display: block;
+  font-weight: 650;
+  margin: 5px 0 8px;
+}
+.domain-input {
+  height: 44px;
+  border: 1px solid #dce4e9;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  color: #7e8b97;
+}
+.domain-input:focus-within {
+  border-color: #3e8b83;
+  box-shadow: 0 0 0 3px #dff1ee;
+}
+.domain-input input {
+  border: 0;
+  outline: 0;
+  flex: 1;
+  color: #203348;
+}
+.domain-error {
+  color: #b54237;
+  background: #fff0ee;
+  padding: 9px 11px;
+  border-radius: 6px;
+}
+.domain-info {
+  display: flex;
+  gap: 10px;
+  background: #f3f8f7;
+  border-radius: 7px;
+  padding: 12px;
+  margin-top: 16px;
+  color: #176d66;
+}
+.domain-info svg {
+  flex: 0 0 18px;
+}
+.domain-info p,
+.domain-info b,
+.domain-info span {
+  display: block;
+  margin: 0;
+}
+.domain-info span {
+  color: #70808b;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.domain-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 20px;
+}
+.domain-actions > button:first-child {
+  border: 1px solid #dce3e8;
+  background: #fff;
+  border-radius: 6px;
+  padding: 0 15px;
+}
+.domain-actions .primary-action {
+  margin: 0;
+}
 .auth-page {
   min-height: 100vh;
   display: grid;
