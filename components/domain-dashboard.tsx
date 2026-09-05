@@ -10,6 +10,7 @@ type DomainRow = {
   dkimStatus: string | null;
   dmarcStatus: string | null;
   mxStatus: string | null;
+  lastCheckedAt: string | null;
   mailboxCount: number;
   sent14d: number;
   opened14d: number;
@@ -23,7 +24,14 @@ const format = new Intl.NumberFormat();
 const rate = (opened: number, sent: number) =>
   sent ? `${Math.round((opened / sent) * 100)}%` : '—';
 const isGood = (value: string | null) =>
-  ['healthy', 'found', 'valid', 'active'].includes((value ?? '').toLowerCase());
+  ['healthy', 'found', 'valid', 'active', 'verified'].includes(
+    (value ?? '').toLowerCase(),
+  );
+const chipState = (value: string | null, checked: boolean) => {
+  if (isGood(value)) return 'ok';
+  if (!checked && (!value || value === 'pending')) return 'pending';
+  return 'error';
+};
 const label = (kind: string, value: string | null) => {
   if (kind === 'DKIM' && value === 'selector_needed')
     return 'DKIM selector needed';
@@ -135,7 +143,10 @@ export default function DomainDashboard({
                             return (
                               <span
                                 key={kind}
-                                className={isGood(value) ? 'ok' : 'pending'}
+                                className={chipState(
+                                  value,
+                                  Boolean(row.lastCheckedAt),
+                                )}
                               >
                                 {label(kind, value)}
                               </span>

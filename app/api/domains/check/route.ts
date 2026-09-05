@@ -33,10 +33,13 @@ export async function POST() {
   let checked = 0;
   for (const row of rows) {
     try {
-      const [txt, dmarc, mx] = await Promise.all([
+      const [txt, dmarc, mx, dkim] = await Promise.all([
         lookup(row.domain, 'TXT'),
         lookup(`_dmarc.${row.domain}`, 'TXT'),
         lookup(row.domain, 'MX'),
+        row.dkimSelector
+          ? lookup(`${row.dkimSelector}._domainkey.${row.domain}`, 'TXT')
+          : Promise.resolve([]),
       ]);
       const spfFound = txt.some((answer) =>
         answer.data?.toLowerCase().includes('v=spf1'),
@@ -45,7 +48,12 @@ export async function POST() {
         answer.data?.toLowerCase().includes('v=dmarc1'),
       );
       const mxFound = mx.length > 0;
-      const healthy = spfFound && dmarcFound && mxFound;
+      const dkimFound = row.dkimSelector ? dkim.length > 0 : false;
+      const healthy =
+        spfFound &&
+        dmarcFound &&
+        mxFound &&
+        (row.dkimSelector ? dkimFound : true);
       await db
         .update(domains)
         .set({
@@ -53,7 +61,11 @@ export async function POST() {
           spfStatus: spfFound ? 'verified' : 'missing',
           dmarcStatus: dmarcFound ? 'verified' : 'missing',
           mxStatus: mxFound ? 'verified' : 'missing',
-          dkimStatus: row.dkimSelector ? row.dkimStatus : 'selector_needed',
+          dkimStatus: row.dkimSelector
+            ? dkimFound
+              ? 'verified'
+              : 'missing'
+            : 'selector_needed',
           lastCheckedAt: new Date(),
           updatedAt: new Date(),
         })
@@ -62,7 +74,15 @@ export async function POST() {
     } catch {
       await db
         .update(domains)
-        .set({ status: 'error', updatedAt: new Date() })
+        .set({
+          status: 'error',
+          spfStatus: 'error',
+          dmarcStatus: 'error',
+          mxStatus: 'error',
+          dkimStatus: row.dkimSelector ? 'error' : 'selector_needed',
+          lastCheckedAt: new Date(),
+          updatedAt: new Date(),
+        })
         .where(eq(domains.id, row.id));
     }
   }

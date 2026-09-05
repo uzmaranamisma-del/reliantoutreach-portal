@@ -1377,6 +1377,11 @@ td button {
   background: #ebf8f3;
   color: #08775e;
 }
+.dns-chips span.error {
+  border-color: #efaaa7;
+  background: #fff0ef;
+  color: #b42318;
+}
 .domain-performance .open-rate {
   color: #2373a8;
   font-weight: 650;
