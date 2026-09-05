@@ -87,6 +87,35 @@ export type ProviderMessage = {
   body?: string | null;
   openCount?: number | null;
 };
+export type ProviderFollowup = {
+  followupId: number;
+  sequenceId?: number | null;
+  subject?: string | null;
+  body?: string | null;
+  waitMin?: number | null;
+  waitUnits?: 'Minutes' | 'Hours' | 'Days' | null;
+  useOriginalSubject?: boolean | null;
+  sendInSameThread?: boolean | null;
+  replyInThread?: boolean | null;
+  sentCount?: number | null;
+  openCount?: number | null;
+  clickCount?: number | null;
+  bounceCount?: number | null;
+  interestedCount?: number | null;
+  replyCount?: number | null;
+};
+export type ProviderSequence = {
+  sequenceId: number;
+  name?: string | null;
+  shortName?: string | null;
+  conditionExtra?: boolean | null;
+  conditionNegate?: boolean | null;
+  conditionTimes?: number | null;
+  conditionReply?: string | null;
+  conditionAction?: string | null;
+  conditionOperator?: string | null;
+  followups?: ProviderFollowup[] | null;
+};
 type Page<T, C = string | number> = {
   items?: T[];
   pagination?: { nextCursor?: C | null };
@@ -166,5 +195,28 @@ export class OutreachProvider {
       this.getMessagesByType('SentManual'),
     ]);
     return pages.flat();
+  }
+
+  async getCampaignSequence(campaignId: number) {
+    const page = await this.get<Page<ProviderSequence, number>>(
+      `/campaigns/${campaignId}/sequences`,
+    );
+    const sequences = Array.isArray(page.items) ? page.items : [];
+    const result: Array<{
+      sequence: ProviderSequence;
+      followups: ProviderFollowup[];
+    }> = [];
+    for (const sequence of sequences) {
+      if (!Number.isInteger(sequence.sequenceId)) continue;
+      const followups = Array.isArray(sequence.followups)
+        ? sequence.followups
+        : await this.get<Page<ProviderFollowup, number>>(
+            `/sequences/${sequence.sequenceId}/followups`,
+          ).then((response) =>
+            Array.isArray(response.items) ? response.items : [],
+          );
+      result.push({ sequence, followups });
+    }
+    return result;
   }
 }

@@ -36,6 +36,13 @@
       "when": 1788636696978,
       "tag": "0004_worthless_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788638607153,
+      "tag": "0005_skinny_kronos",
+      "breakpoints": true
     }
   ]
 }

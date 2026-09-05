@@ -1405,6 +1405,129 @@ td button {
   font-size: 11px;
   background: #fbfcfd;
 }
+.campaign-sequence-card {
+  margin-bottom: 18px;
+  padding: 0;
+  overflow: hidden;
+}
+.sequence-heading {
+  padding: 20px 22px;
+  border-bottom: 1px solid #e5eaee;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+.sequence-heading p {
+  margin: 0 0 5px;
+  color: #176d66;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.sequence-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.sequence-heading div > span {
+  display: block;
+  color: #73818e;
+  font-size: 12px;
+  margin-top: 5px;
+}
+.sequence-heading > span {
+  border: 1px solid #d7e6e3;
+  border-radius: 999px;
+  background: #edf7f4;
+  color: #176d66;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sequence-list {
+  padding: 20px 22px;
+  display: grid;
+  gap: 0;
+}
+.sequence-step {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 13px;
+  position: relative;
+  padding-bottom: 18px;
+}
+.sequence-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 34px;
+  bottom: 0;
+  left: 16px;
+  width: 1px;
+  background: #dce5e8;
+}
+.sequence-index {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #176d66;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  z-index: 1;
+}
+.sequence-copy {
+  border: 1px solid #e0e6eb;
+  border-radius: 7px;
+  background: #fbfcfd;
+  padding: 15px 17px;
+}
+.sequence-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+.sequence-meta b {
+  color: #243c4e;
+  margin-right: 3px;
+}
+.sequence-meta span,
+.sequence-copy footer span {
+  border-radius: 4px;
+  background: #eef2f5;
+  color: #647482;
+  padding: 4px 7px;
+  font-size: 10px;
+}
+.sequence-copy h3 {
+  margin: 13px 0 6px;
+  color: #172d40;
+  font-size: 14px;
+}
+.sequence-copy > p {
+  margin: 0;
+  color: #657583;
+  font-size: 12px;
+  line-height: 1.55;
+  max-width: 980px;
+}
+.sequence-copy footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 13px;
+  padding: 0;
+  background: none;
+}
+.sequence-empty {
+  padding: 42px 22px;
+  text-align: center;
+  color: #74828f;
+  font-size: 13px;
+}
 @media (max-width: 760px) {
   .domain-controls {
     flex-wrap: wrap;
@@ -1415,6 +1538,11 @@ td button {
   }
   .domain-info {
     align-items: flex-start;
+  }
+  .sequence-heading,
+  .sequence-list {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 .integration-layout {

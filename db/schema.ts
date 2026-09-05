@@ -96,13 +96,20 @@ export const campaignSteps = sqliteTable(
     campaignId: text('campaign_id')
       .notNull()
       .references(() => campaigns.id),
+    provider: text('provider'),
+    externalIdCiphertext: text('external_id_ciphertext'),
+    sequenceName: text('sequence_name'),
+    sequenceCondition: text('sequence_condition'),
     stepNumber: integer('step_number').notNull(),
     delayDays: integer('delay_days').notNull(),
+    waitAmount: integer('wait_amount'),
+    waitUnit: text('wait_unit'),
     subject: text('subject'),
     body: text('body'),
+    settings: text('settings', { mode: 'json' }),
     ...times,
   },
-  (t) => [uniqueIndex('campaign_step_unique').on(t.campaignId, t.stepNumber)],
+  (t) => [index('campaign_steps_campaign').on(t.campaignId, t.stepNumber)],
 );
 export const prospects = sqliteTable(
   'prospects',

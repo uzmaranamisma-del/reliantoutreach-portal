@@ -80,6 +80,24 @@ export default function Dashboard() {
     delayMinSeconds: number | null;
     days: Array<[string, boolean | null, number | null, number | null]>;
   } | null>(null);
+  const [campaignSequence, setCampaignSequence] = useState<
+    Array<{
+      id: string;
+      stepNumber: number;
+      sequenceName: string | null;
+      sequenceCondition: string | null;
+      waitAmount: number | null;
+      waitUnit: string | null;
+      subject: string | null;
+      body: string | null;
+      settings: {
+        useOriginalSubject?: boolean;
+        sendInSameThread?: boolean;
+        sentCount?: number;
+        replyCount?: number;
+      } | null;
+    }>
+  >([]);
   useEffect(() => {
     const campaignId = new URLSearchParams(window.location.search).get(
       'campaign',
@@ -121,6 +139,22 @@ export default function Dashboard() {
             delayMinSeconds: number | null;
             days: Array<[string, boolean | null, number | null, number | null]>;
           } | null;
+          sequence: Array<{
+            id: string;
+            stepNumber: number;
+            sequenceName: string | null;
+            sequenceCondition: string | null;
+            waitAmount: number | null;
+            waitUnit: string | null;
+            subject: string | null;
+            body: string | null;
+            settings: {
+              useOriginalSubject?: boolean;
+              sendInSameThread?: boolean;
+              sentCount?: number;
+              replyCount?: number;
+            } | null;
+          }>;
         } | null;
       };
       if (!data.lastUpdatedAt) return;
@@ -176,6 +210,7 @@ export default function Dashboard() {
       );
       setSelectedCampaign(data.selectedCampaign?.name ?? null);
       setCampaignSettings(data.selectedCampaign?.settings ?? null);
+      setCampaignSequence(data.selectedCampaign?.sequence ?? []);
     });
   }, []);
   const liveFunnel = liveTotals
@@ -370,6 +405,82 @@ export default function Dashboard() {
                     </span>
                   ))}
               </div>
+            </section>
+          )}
+          {selectedCampaign && (
+            <section
+              className="panel campaign-sequence-card"
+              aria-label="Campaign sequence"
+            >
+              <div className="sequence-heading">
+                <div>
+                  <p>EMAIL SEQUENCE</p>
+                  <h2>Scheduled follow-ups</h2>
+                  <span>
+                    Read-only configuration synchronized from outreach
+                    infrastructure
+                  </span>
+                </div>
+                <span>{campaignSequence.length} steps</span>
+              </div>
+              {campaignSequence.length ? (
+                <div className="sequence-list">
+                  {campaignSequence.map((step) => (
+                    <article key={step.id} className="sequence-step">
+                      <div className="sequence-index">{step.stepNumber}</div>
+                      <div className="sequence-copy">
+                        <div className="sequence-meta">
+                          <b>
+                            {step.sequenceName || `Step ${step.stepNumber}`}
+                          </b>
+                          <span>
+                            Wait {step.waitAmount ?? 0}{' '}
+                            {step.waitUnit || 'days'}
+                          </span>
+                          {step.sequenceCondition && (
+                            <span>{step.sequenceCondition}</span>
+                          )}
+                        </div>
+                        <h3>
+                          {step.settings?.useOriginalSubject
+                            ? 'Use original subject'
+                            : step.subject || 'No subject'}
+                        </h3>
+                        <p>
+                          {step.body
+                            ?.replace(/<[^>]*>/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim() || 'No message body available.'}
+                        </p>
+                        <footer>
+                          <span>
+                            {step.settings?.sendInSameThread
+                              ? 'Same thread'
+                              : 'New message'}
+                          </span>
+                          <span>
+                            {new Intl.NumberFormat().format(
+                              step.settings?.sentCount ?? 0,
+                            )}{' '}
+                            sent
+                          </span>
+                          <span>
+                            {new Intl.NumberFormat().format(
+                              step.settings?.replyCount ?? 0,
+                            )}{' '}
+                            replies
+                          </span>
+                        </footer>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="sequence-empty">
+                  No synchronized sequence steps yet. Run Sync Now from Settings
+                  to import them.
+                </div>
+              )}
             </section>
           )}
           <section className="active-package" aria-label="Active package">

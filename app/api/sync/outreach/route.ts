@@ -2,6 +2,7 @@ import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
 import {
   campaigns,
+  campaignSteps,
   domains,
   integrations,
   mailboxes,
@@ -111,6 +112,17 @@ export async function POST() {
       optionalResults[0].status === 'rejected' ? 'prospects_unavailable' : null,
       optionalResults[1].status === 'rejected' ? 'messages_unavailable' : null,
     ].filter(Boolean);
+    const sequenceResults = await Promise.allSettled(
+      remoteCampaigns.slice(0, 50).map(async (campaign) => ({
+        campaignId: campaign.campaignId,
+        branches: await provider.getCampaignSequence(campaign.campaignId),
+      })),
+    );
+    const remoteSequences = sequenceResults.flatMap((result) =>
+      result.status === 'fulfilled' ? [result.value] : [],
+    );
+    if (sequenceResults.some((result) => result.status === 'rejected'))
+      warnings.push('sequences_partially_unavailable');
     const synchronizedCampaignIds = new Set(
       remoteCampaigns.map((campaign) => campaign.campaignId),
     );
@@ -178,6 +190,109 @@ export async function POST() {
             updatedAt: now,
           },
         });
+    }
+    for (const campaignSequence of remoteSequences) {
+      const campaignId = await stableExternalId(
+        workspaceId,
+        `campaign:${campaignSequence.campaignId}`,
+      );
+      await db
+        .delete(campaignSteps)
+        .where(
+          and(
+            eq(campaignSteps.workspaceId, workspaceId),
+            eq(campaignSteps.campaignId, campaignId),
+          ),
+        );
+      let stepNumber = 1;
+      for (const branch of campaignSequence.branches) {
+        const condition =
+          branch.sequence.conditionReply ||
+          branch.sequence.conditionAction ||
+          'All prospects';
+        for (const followup of branch.followups) {
+          if (!Number.isInteger(followup.followupId)) continue;
+          const waitAmount = Math.max(0, followup.waitMin ?? 0);
+          const waitUnit = followup.waitUnits ?? 'Days';
+          const delayDays =
+            waitUnit === 'Days'
+              ? waitAmount
+              : waitUnit === 'Hours'
+                ? Math.ceil(waitAmount / 24)
+                : Math.ceil(waitAmount / 1440);
+          const stepId = await stableExternalId(
+            workspaceId,
+            `followup:${followup.followupId}`,
+          );
+          await db
+            .insert(campaignSteps)
+            .values({
+              id: stepId,
+              workspaceId,
+              campaignId,
+              provider: 'outreach',
+              externalIdCiphertext: await encryptSecret(
+                String(followup.followupId),
+              ),
+              sequenceName:
+                branch.sequence.name || branch.sequence.shortName || 'Sequence',
+              sequenceCondition: condition,
+              stepNumber,
+              delayDays,
+              waitAmount,
+              waitUnit: waitUnit.toLowerCase(),
+              subject: followup.useOriginalSubject
+                ? null
+                : (followup.subject ?? null),
+              body: followup.body ?? null,
+              settings: {
+                useOriginalSubject: followup.useOriginalSubject ?? false,
+                sendInSameThread: followup.sendInSameThread ?? false,
+                replyInThread: followup.replyInThread ?? false,
+                sentCount: followup.sentCount ?? 0,
+                openCount: followup.openCount ?? 0,
+                clickCount: followup.clickCount ?? 0,
+                bounceCount: followup.bounceCount ?? 0,
+                interestedCount: followup.interestedCount ?? 0,
+                replyCount: followup.replyCount ?? 0,
+              },
+              createdAt: now,
+              updatedAt: now,
+            })
+            .onConflictDoUpdate({
+              target: campaignSteps.id,
+              set: {
+                campaignId,
+                sequenceName:
+                  branch.sequence.name ||
+                  branch.sequence.shortName ||
+                  'Sequence',
+                sequenceCondition: condition,
+                stepNumber,
+                delayDays,
+                waitAmount,
+                waitUnit: waitUnit.toLowerCase(),
+                subject: followup.useOriginalSubject
+                  ? null
+                  : (followup.subject ?? null),
+                body: followup.body ?? null,
+                settings: {
+                  useOriginalSubject: followup.useOriginalSubject ?? false,
+                  sendInSameThread: followup.sendInSameThread ?? false,
+                  replyInThread: followup.replyInThread ?? false,
+                  sentCount: followup.sentCount ?? 0,
+                  openCount: followup.openCount ?? 0,
+                  clickCount: followup.clickCount ?? 0,
+                  bounceCount: followup.bounceCount ?? 0,
+                  interestedCount: followup.interestedCount ?? 0,
+                  replyCount: followup.replyCount ?? 0,
+                },
+                updatedAt: now,
+              },
+            });
+          stepNumber++;
+        }
+      }
     }
     for (const item of remoteSenders) {
       if (!Number.isInteger(item.senderId) || !item.email) continue;
@@ -407,7 +522,16 @@ export async function POST() {
       remoteCampaigns.length +
       remoteSenders.length +
       remoteProspects.length +
-      remoteMessages.length;
+      remoteMessages.length +
+      remoteSequences.reduce(
+        (sum, campaign) =>
+          sum +
+          campaign.branches.reduce(
+            (n, branch) => n + branch.followups.length,
+            0,
+          ),
+        0,
+      );
     await db
       .update(integrations)
       .set({ status: 'connected', lastSyncedAt: now, updatedAt: now })
@@ -427,6 +551,15 @@ export async function POST() {
       emailAccounts: remoteSenders.length,
       prospects: remoteProspects.length,
       messages: remoteMessages.length,
+      sequenceSteps: remoteSequences.reduce(
+        (sum, campaign) =>
+          sum +
+          campaign.branches.reduce(
+            (n, branch) => n + branch.followups.length,
+            0,
+          ),
+        0,
+      ),
       warnings,
       recordsProcessed: processed,
       syncedAt: now,

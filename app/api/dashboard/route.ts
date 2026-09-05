@@ -1,7 +1,7 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
-import { campaigns, mailboxes } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { campaigns, campaignSteps, mailboxes } from '@/db/schema';
+import { and, asc, eq } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   const auth = await getChatGPTUser();
@@ -25,6 +25,29 @@ export async function GET(request: Request) {
   const selectedCampaign = requestedCampaignId
     ? (campaignRows.find((row) => row.id === requestedCampaignId) ?? null)
     : null;
+  const selectedSteps = selectedCampaign
+    ? await db
+        .select({
+          id: campaignSteps.id,
+          stepNumber: campaignSteps.stepNumber,
+          sequenceName: campaignSteps.sequenceName,
+          sequenceCondition: campaignSteps.sequenceCondition,
+          waitAmount: campaignSteps.waitAmount,
+          waitUnit: campaignSteps.waitUnit,
+          subject: campaignSteps.subject,
+          body: campaignSteps.body,
+          settings: campaignSteps.settings,
+        })
+        .from(campaignSteps)
+        .where(
+          and(
+            eq(campaignSteps.workspaceId, workspaceId),
+            eq(campaignSteps.campaignId, selectedCampaign.id),
+          ),
+        )
+        .orderBy(asc(campaignSteps.stepNumber))
+        .limit(50)
+    : [];
   const metricRows = selectedCampaign ? [selectedCampaign] : campaignRows;
   const total = (
     field:
@@ -71,6 +94,7 @@ export async function GET(request: Request) {
             name: selectedCampaign.name,
             status: selectedCampaign.status,
             settings: selectedCampaign.settings,
+            sequence: selectedSteps,
           }
         : null,
       lastUpdatedAt: latest ? new Date(latest).toISOString() : null,
