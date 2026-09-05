@@ -290,6 +290,10 @@ export default function SectionView({ section }: { section: string }) {
   const [emailImportOpen, setEmailImportOpen] = useState(false);
   const [campaignIds, setCampaignIds] = useState<string[]>([]);
   const [domainRefresh, setDomainRefresh] = useState(0);
+  const [prospectPage, setProspectPage] = useState(1);
+  const [prospectHasNext, setProspectHasNext] = useState(false);
+  const [prospectLoading, setProspectLoading] = useState(false);
+  const [prospectRefresh, setProspectRefresh] = useState(0);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
   useEffect(() => {
@@ -323,32 +327,35 @@ export default function SectionView({ section }: { section: string }) {
   }, [section]);
   useEffect(() => {
     if (section !== 'prospects') return;
-    void fetch('/api/prospects').then(async (response) => {
-      if (!response.ok) return;
-      const data = (await response.json()) as {
-        prospects: Array<{
-          email: string;
-          firstName: string | null;
-          lastName: string | null;
-          jobTitle: string | null;
-          status: string;
-          company: string | null;
-        }>;
-      };
-      if (!data.prospects.length) return;
-      setDisplayRows(
-        data.prospects.map((prospect) => [
-          `${prospect.firstName ?? ''} ${prospect.lastName ?? ''}`.trim() ||
-            prospect.email,
-          prospect.company || '—',
-          prospect.jobTitle || '—',
-          'Unassigned',
-          prospect.status,
-          'Saved',
-        ]),
-      );
-    });
-  }, [section]);
+    void fetch(`/api/prospects?page=${prospectPage}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          hasNext: boolean;
+          prospects: Array<{
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            jobTitle: string | null;
+            status: string;
+            company: string | null;
+          }>;
+        };
+        setProspectHasNext(data.hasNext);
+        setDisplayRows(
+          data.prospects.map((prospect) => [
+            `${prospect.firstName ?? ''} ${prospect.lastName ?? ''}`.trim() ||
+              prospect.email,
+            prospect.company || '—',
+            prospect.jobTitle || '—',
+            'Unassigned',
+            prospect.status,
+            'Saved',
+          ]),
+        );
+      })
+      .finally(() => setProspectLoading(false));
+  }, [section, prospectPage, prospectRefresh]);
   useEffect(() => {
     if (section !== 'replies') return;
     void fetch('/api/replies').then(async (response) => {
@@ -529,10 +536,38 @@ export default function SectionView({ section }: { section: string }) {
                   </table>
                 </div>
                 <div className="table-footer">
-                  <span>Showing {displayRows.length} records</span>
+                  <span>
+                    {section === 'prospects'
+                      ? `Page ${prospectPage} · showing ${displayRows.length} of up to 100 records`
+                      : `Showing ${displayRows.length} records`}
+                  </span>
                   <div>
-                    <button disabled>Previous</button>
-                    <button>Next</button>
+                    <button
+                      disabled={
+                        section !== 'prospects' ||
+                        prospectPage === 1 ||
+                        prospectLoading
+                      }
+                      onClick={() => {
+                        setProspectLoading(true);
+                        setProspectPage((value) => Math.max(1, value - 1));
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={
+                        section !== 'prospects' ||
+                        !prospectHasNext ||
+                        prospectLoading
+                      }
+                      onClick={() => {
+                        setProspectLoading(true);
+                        setProspectPage((value) => value + 1);
+                      }}
+                    >
+                      {prospectLoading ? 'Loading…' : 'Next'}
+                    </button>
                   </div>
                 </div>
               </section>
@@ -544,9 +579,10 @@ export default function SectionView({ section }: { section: string }) {
         <CsvImport
           open={importOpen}
           onOpenChange={setImportOpen}
-          onImport={(newRows) =>
-            setDisplayRows((previous) => [...newRows, ...previous])
-          }
+          onImport={() => {
+            setProspectPage(1);
+            setProspectRefresh((value) => value + 1);
+          }}
         />
       )}
       {section === 'domains' && (

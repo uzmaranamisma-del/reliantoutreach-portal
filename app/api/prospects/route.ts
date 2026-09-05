@@ -54,9 +54,13 @@ async function context() {
     .onConflictDoNothing();
   return { db, workspaceId };
 }
-export async function GET() {
+export async function GET(request: Request) {
   const ctx = await context();
   if (!ctx) return json({ error: 'Authentication required' }, 401);
+  const requestedPage = Number(new URL(request.url).searchParams.get('page'));
+  const page =
+    Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const pageSize = 100;
   const rows = await ctx.db
     .select({
       id: prospects.id,
@@ -76,9 +80,14 @@ export async function GET() {
       ),
     )
     .orderBy(desc(prospects.createdAt))
-    .limit(500);
+    .limit(pageSize + 1)
+    .offset((page - 1) * pageSize);
+  const hasNext = rows.length > pageSize;
   return json({
-    prospects: rows.map((row) => ({
+    page,
+    pageSize,
+    hasNext,
+    prospects: rows.slice(0, pageSize).map((row) => ({
       ...row,
       company:
         row.customFields &&
