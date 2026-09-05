@@ -10,6 +10,33 @@ export type ProviderCampaign = {
   bounceCount?: number | null;
   replyCount?: number | null;
   interestedCount?: number | null;
+  dailyLimit?: number | null;
+  dailyLimitPer?: string | null;
+  scheduleSending?: boolean | null;
+  scheduleTimeZone?: string | null;
+  delayMinMinutes?: number | null;
+  delayMinSeconds?: number | null;
+  sendMon?: boolean | null;
+  sendMonAfter?: number | null;
+  sendMonBefore?: number | null;
+  sendTue?: boolean | null;
+  sendTueAfter?: number | null;
+  sendTueBefore?: number | null;
+  sendWed?: boolean | null;
+  sendWedAfter?: number | null;
+  sendWedBefore?: number | null;
+  sendThu?: boolean | null;
+  sendThuAfter?: number | null;
+  sendThuBefore?: number | null;
+  sendFri?: boolean | null;
+  sendFriAfter?: number | null;
+  sendFriBefore?: number | null;
+  sendSat?: boolean | null;
+  sendSatAfter?: number | null;
+  sendSatBefore?: number | null;
+  sendSun?: boolean | null;
+  sendSunAfter?: number | null;
+  sendSunBefore?: number | null;
 };
 export type ProviderSender = {
   senderId: number;
@@ -19,6 +46,12 @@ export type ProviderSender = {
   dailyLimit?: number | null;
   disconnected?: boolean | null;
   warmup?: boolean | null;
+  delayMinMinutes?: number | null;
+  dailyLimitIncrease?: boolean | null;
+  dailyLimitIncreaseToMax?: number | null;
+  warmupDailyLimit?: number | null;
+  warmupReplyPercent?: number | null;
+  warmupSkipWeekends?: boolean | null;
 };
 export type ProviderProspect = {
   prospectId: number;

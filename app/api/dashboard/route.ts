@@ -66,7 +66,12 @@ export async function GET(request: Request) {
             : 0,
         })),
       selectedCampaign: selectedCampaign
-        ? { id: selectedCampaign.id, name: selectedCampaign.name }
+        ? {
+            id: selectedCampaign.id,
+            name: selectedCampaign.name,
+            status: selectedCampaign.status,
+            settings: selectedCampaign.settings,
+          }
         : null,
       lastUpdatedAt: latest ? new Date(latest).toISOString() : null,
     },

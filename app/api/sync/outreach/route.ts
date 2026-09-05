@@ -113,6 +113,23 @@ export async function POST() {
       const externalIdCiphertext = await encryptSecret(String(item.campaignId));
       const sent = Math.max(0, item.sentCount ?? 0);
       const bounced = Math.max(0, item.bounceCount ?? 0);
+      const campaignSettings = {
+        dailyLimit: item.dailyLimit ?? null,
+        dailyLimitPer: item.dailyLimitPer ?? null,
+        scheduleSending: item.scheduleSending ?? null,
+        scheduleTimeZone: item.scheduleTimeZone ?? null,
+        delayMinMinutes: item.delayMinMinutes ?? null,
+        delayMinSeconds: item.delayMinSeconds ?? null,
+        days: [
+          ['Monday', item.sendMon, item.sendMonAfter, item.sendMonBefore],
+          ['Tuesday', item.sendTue, item.sendTueAfter, item.sendTueBefore],
+          ['Wednesday', item.sendWed, item.sendWedAfter, item.sendWedBefore],
+          ['Thursday', item.sendThu, item.sendThuAfter, item.sendThuBefore],
+          ['Friday', item.sendFri, item.sendFriAfter, item.sendFriBefore],
+          ['Saturday', item.sendSat, item.sendSatAfter, item.sendSatBefore],
+          ['Sunday', item.sendSun, item.sendSunAfter, item.sendSunBefore],
+        ],
+      };
       await db
         .insert(campaigns)
         .values({
@@ -129,6 +146,7 @@ export async function POST() {
           deliveredCount: Math.max(0, sent - bounced),
           replyCount: Math.max(0, item.replyCount ?? 0),
           positiveReplyCount: Math.max(0, item.interestedCount ?? 0),
+          settings: campaignSettings,
           lastSyncedAt: now,
           createdAt: item.createdAt ? new Date(item.createdAt) : now,
           updatedAt: now,
@@ -145,6 +163,7 @@ export async function POST() {
             deliveredCount: Math.max(0, sent - bounced),
             replyCount: Math.max(0, item.replyCount ?? 0),
             positiveReplyCount: Math.max(0, item.interestedCount ?? 0),
+            settings: campaignSettings,
             lastSyncedAt: now,
             updatedAt: now,
           },
@@ -154,6 +173,14 @@ export async function POST() {
       if (!Number.isInteger(item.senderId) || !item.email) continue;
       const email = item.email.trim().toLowerCase();
       const id = await stableExternalId(workspaceId, `sender:${item.senderId}`);
+      const mailboxSettings = {
+        delayMinMinutes: item.delayMinMinutes ?? null,
+        dailyLimitIncrease: item.dailyLimitIncrease ?? null,
+        dailyLimitIncreaseToMax: item.dailyLimitIncreaseToMax ?? null,
+        warmupDailyLimit: item.warmupDailyLimit ?? null,
+        warmupReplyPercent: item.warmupReplyPercent ?? null,
+        warmupSkipWeekends: item.warmupSkipWeekends ?? null,
+      };
       await db
         .insert(mailboxes)
         .values({
@@ -172,6 +199,7 @@ export async function POST() {
             : item.warmup
               ? 'warming'
               : 'healthy',
+          settings: mailboxSettings,
           lastSyncedAt: now,
           createdAt: now,
           updatedAt: now,
@@ -189,6 +217,7 @@ export async function POST() {
               : item.warmup
                 ? 'warming'
                 : 'healthy',
+            settings: mailboxSettings,
             lastSyncedAt: now,
             updatedAt: now,
           },

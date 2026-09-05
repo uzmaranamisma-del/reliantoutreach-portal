@@ -22,6 +22,13 @@
       "when": 1788599703737,
       "tag": "0002_fresh_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788617156541,
+      "tag": "0003_natural_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

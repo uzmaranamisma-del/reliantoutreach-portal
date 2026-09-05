@@ -1405,6 +1405,79 @@ td button {
   padding: 2rem;
   align-content: center;
 }
+.campaign-settings-card {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1fr) 2fr;
+  gap: 1.5rem 2rem;
+  margin-bottom: 1.25rem;
+  padding: 1.4rem 1.55rem;
+  border: 1px solid #dce3ec;
+  border-radius: 0.65rem;
+  background: #fff;
+}
+.campaign-settings-card > div:first-child p {
+  margin: 0 0 0.3rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+.campaign-settings-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.campaign-settings-card > div:first-child span {
+  color: #718096;
+  font-size: 0.8rem;
+}
+.campaign-settings-card dl {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 0;
+}
+.campaign-settings-card dl div {
+  display: grid;
+  gap: 0.25rem;
+}
+.campaign-settings-card dt {
+  color: #718096;
+  font-size: 0.75rem;
+}
+.campaign-settings-card dd {
+  margin: 0;
+  color: #142033;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.sending-days {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #edf1f5;
+}
+.sending-days span {
+  display: inline-flex;
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.4rem;
+  background: #f2f6fa;
+  color: #617085;
+  font-size: 0.75rem;
+}
+.sending-days b {
+  color: #176d66;
+}
+@media (max-width: 850px) {
+  .campaign-settings-card {
+    grid-template-columns: 1fr;
+  }
+  .campaign-settings-card dl {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 .snapshot-row {
   display: grid;
   grid-template-columns: 5.5rem minmax(0, 1fr) 5rem;

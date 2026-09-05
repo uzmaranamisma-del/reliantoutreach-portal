@@ -5,7 +5,9 @@ Verified against the user-supplied official OpenAPI document **API Documentation
 - Server: `https://api.manyreach.com`
 - Authentication: `X-API-Key` request header. Query-string authentication is unsupported in V2.
 - Campaign read: `GET /api/v2/campaigns`, paginated; current sync requests up to 1,000 non-archived records.
+- Campaign read responses also supply daily limits, timezone, send delay, enabled weekdays, and daily sending windows. These fields are cached as provider-neutral campaign settings and shown on the selected campaign dashboard.
 - Sender read: `GET /api/v2/senders`, paginated; current sync requests up to 1,000 records.
+- Sender daily limits, pacing, ramp-up, and warm-up settings are cached internally for the Email Accounts experience. Credentials and connection internals are never returned.
 - Campaign time series: `GET /api/v2/campaigns/{id}/stats` is documented but not yet used.
 - Prospect read: `GET /api/v2/prospects`, cursor-paginated; sync stores up to 5,000 records per run and associates messages by normalized email.
 - Messages: `GET /api/v2/messages` requires a message type. Sync requests `Reply`, `Sent`, and `SentManual`, cursor-paginates each type, and stores up to 3,000 records per type per run.

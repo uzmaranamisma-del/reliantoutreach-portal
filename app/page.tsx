@@ -71,6 +71,15 @@ export default function Dashboard() {
   } | null>(null);
   const [lastUpdated, setLastUpdated] = useState('Demo data');
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+  const [campaignSettings, setCampaignSettings] = useState<{
+    dailyLimit: number | null;
+    dailyLimitPer: string | null;
+    scheduleSending: boolean | null;
+    scheduleTimeZone: string | null;
+    delayMinMinutes: number | null;
+    delayMinSeconds: number | null;
+    days: Array<[string, boolean | null, number | null, number | null]>;
+  } | null>(null);
   useEffect(() => {
     const campaignId = new URLSearchParams(window.location.search).get(
       'campaign',
@@ -99,7 +108,20 @@ export default function Dashboard() {
           replyRate: number;
         }>;
         lastUpdatedAt: string | null;
-        selectedCampaign: { id: string; name: string } | null;
+        selectedCampaign: {
+          id: string;
+          name: string;
+          status: string;
+          settings: {
+            dailyLimit: number | null;
+            dailyLimitPer: string | null;
+            scheduleSending: boolean | null;
+            scheduleTimeZone: string | null;
+            delayMinMinutes: number | null;
+            delayMinSeconds: number | null;
+            days: Array<[string, boolean | null, number | null, number | null]>;
+          } | null;
+        } | null;
       };
       if (!data.lastUpdatedAt) return;
       const format = new Intl.NumberFormat();
@@ -153,6 +175,7 @@ export default function Dashboard() {
         `Last updated ${new Date(data.lastUpdatedAt).toLocaleString()}`,
       );
       setSelectedCampaign(data.selectedCampaign?.name ?? null);
+      setCampaignSettings(data.selectedCampaign?.settings ?? null);
     });
   }, []);
   const liveFunnel = liveTotals
@@ -304,6 +327,51 @@ export default function Dashboard() {
               </article>
             ))}
           </section>
+          {selectedCampaign && campaignSettings && (
+            <section
+              className="campaign-settings-card"
+              aria-label="Campaign sending settings"
+            >
+              <div>
+                <p>CAMPAIGN SETTINGS</p>
+                <h2>Sending schedule</h2>
+                <span>Current synchronized configuration</span>
+              </div>
+              <dl>
+                <div>
+                  <dt>Daily limit</dt>
+                  <dd>{campaignSettings.dailyLimit ?? 'Not set'}</dd>
+                </div>
+                <div>
+                  <dt>Limit period</dt>
+                  <dd>{campaignSettings.dailyLimitPer || 'Daily'}</dd>
+                </div>
+                <div>
+                  <dt>Timezone</dt>
+                  <dd>{campaignSettings.scheduleTimeZone || 'Not set'}</dd>
+                </div>
+                <div>
+                  <dt>Delay between sends</dt>
+                  <dd>
+                    {campaignSettings.delayMinMinutes ?? 0}m{' '}
+                    {campaignSettings.delayMinSeconds ?? 0}s
+                  </dd>
+                </div>
+              </dl>
+              <div className="sending-days">
+                {campaignSettings.days
+                  ?.filter((day) => day[1])
+                  .map(([name, , after, before]) => (
+                    <span key={name}>
+                      <b>{name.slice(0, 3)}</b>
+                      {after != null && before != null
+                        ? `${after}–${before}`
+                        : 'Enabled'}
+                    </span>
+                  ))}
+              </div>
+            </section>
+          )}
           <section className="active-package" aria-label="Active package">
             <div className="package-identity">
               <span className="package-icon">
