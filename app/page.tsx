@@ -20,7 +20,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 const nav = [
   [LayoutDashboard, 'Dashboard'],
   [Users, 'Prospects'],
@@ -34,7 +34,7 @@ const nav = [
   [Users, 'Team'],
   [Settings, 'Settings'],
 ] as const;
-const metrics = [
+const seedMetrics = [
   ['Active campaigns', '4', '+1', 'vs previous period'],
   ['Emails sent', '12,840', '+14.8%', 'vs previous period'],
   ['Replies', '318', '+8.2%', '2.6% reply rate'],
@@ -50,13 +50,83 @@ const funnel = [
   ['Meetings', '21', 35],
   ['Opportunities', '8', 25],
 ] as const;
-const campaigns = [
+const seedCampaigns = [
   ['Industrial Automation USA', 'Active', '3,810', '141', '37', '8', '3.7%'],
   ['Logistics Leaders — Q3', 'Active', '2,460', '92', '21', '4', '3.8%'],
   ['Manufacturing UK', 'Paused', '1,920', '48', '9', '2', '2.5%'],
 ] as const;
 export default function Dashboard() {
   const [open, setOpen] = useState(false);
+  const [metrics, setMetrics] =
+    useState<readonly (readonly string[])[]>(seedMetrics);
+  const [campaigns, setCampaigns] =
+    useState<readonly (readonly string[])[]>(seedCampaigns);
+  const [lastUpdated, setLastUpdated] = useState('Demo data');
+  useEffect(() => {
+    void fetch('/api/dashboard').then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        metrics: {
+          activeCampaigns: number;
+          sent: number;
+          replies: number;
+          positiveReplies: number;
+        };
+        campaigns: Array<{
+          name: string;
+          status: string;
+          contacted: number;
+          replies: number;
+          positiveReplies: number;
+          replyRate: number;
+        }>;
+        lastUpdatedAt: string | null;
+      };
+      if (!data.lastUpdatedAt) return;
+      const format = new Intl.NumberFormat();
+      setMetrics([
+        [
+          'Active campaigns',
+          format.format(data.metrics.activeCampaigns),
+          'Live',
+          'current status',
+        ],
+        [
+          'Emails sent',
+          format.format(data.metrics.sent),
+          'Live',
+          'all synchronized campaigns',
+        ],
+        [
+          'Replies',
+          format.format(data.metrics.replies),
+          'Live',
+          'confirmed campaign total',
+        ],
+        [
+          'Positive replies',
+          format.format(data.metrics.positiveReplies),
+          'Live',
+          'interested prospects',
+        ],
+        ['Meetings booked', '12', 'Manual', 'stored in workspace'],
+      ]);
+      setCampaigns(
+        data.campaigns.map((campaign) => [
+          campaign.name,
+          campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1),
+          format.format(campaign.contacted),
+          format.format(campaign.replies),
+          format.format(campaign.positiveReplies),
+          '—',
+          `${campaign.replyRate.toFixed(1)}%`,
+        ]),
+      );
+      setLastUpdated(
+        `Last updated ${new Date(data.lastUpdatedAt).toLocaleString()}`,
+      );
+    });
+  }, []);
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#142033]">
       <aside className={`sidebar ${open ? 'open' : ''}`}>
@@ -149,6 +219,7 @@ export default function Dashboard() {
               <p>THURSDAY, SEPTEMBER 4</p>
               <h1>Good afternoon, Farhan</h1>
               <span>Here’s how your outbound operation is performing.</span>
+              <small className="data-freshness">{lastUpdated}</small>
             </div>
             <label className="period">
               <CalendarDays size={16} />

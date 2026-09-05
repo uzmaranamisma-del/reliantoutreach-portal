@@ -6,6 +6,8 @@ export default function IntegrationSettings() {
   const [apiKey, setApiKey] = useState('');
   const [visible, setVisible] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState('');
   const [error, setError] = useState('');
   const [connection, setConnection] = useState<null | {
     status: string;
@@ -47,6 +49,36 @@ export default function IntegrationSettings() {
       setSaving(false);
     }
   }
+  async function syncNow() {
+    setSyncing(true);
+    setError('');
+    setSyncResult('');
+    try {
+      const response = await fetch('/api/sync/outreach', { method: 'POST' });
+      const data = (await response.json()) as {
+        error?: string;
+        campaigns?: number;
+        emailAccounts?: number;
+      };
+      if (!response.ok) {
+        setError(data.error || 'Data could not be synchronized.');
+        return;
+      }
+      setSyncResult(
+        `${data.campaigns ?? 0} campaigns and ${data.emailAccounts ?? 0} email accounts synchronized.`,
+      );
+      const status = await fetch('/api/integrations/outreach');
+      if (status.ok)
+        setConnection(
+          ((await status.json()) as { connection: typeof connection })
+            .connection,
+        );
+    } catch {
+      setError('Data could not be synchronized. Try again.');
+    } finally {
+      setSyncing(false);
+    }
+  }
   return (
     <div className="integration-layout">
       <section className="integration-card">
@@ -60,7 +92,8 @@ export default function IntegrationSettings() {
           </div>
           {connection && (
             <em>
-              <CheckCircle2 /> Configured
+              <CheckCircle2 />{' '}
+              {connection.status === 'connected' ? 'Connected' : 'Configured'}
             </em>
           )}
         </div>
@@ -88,6 +121,7 @@ export default function IntegrationSettings() {
             </button>
           </div>
           {error && <p className="domain-error">{error}</p>}
+          {syncResult && <p className="sync-success">{syncResult}</p>}
           <div className="integration-form-foot">
             <p>
               <ShieldCheck />
@@ -103,6 +137,16 @@ export default function IntegrationSettings() {
                   ? 'Replace connection'
                   : 'Connect account'}
             </button>
+            {connection && (
+              <button
+                type="button"
+                className="secondary-action"
+                disabled={syncing}
+                onClick={() => void syncNow()}
+              >
+                {syncing ? 'Synchronizing…' : 'Sync now'}
+              </button>
+            )}
           </div>
         </form>
       </section>
@@ -127,12 +171,14 @@ export default function IntegrationSettings() {
               </small>
             </span>
           </li>
-          <li>
+          <li className={connection?.status === 'connected' ? 'done' : ''}>
             <b>3</b>
             <span>
               <strong>Data synchronization</strong>
               <small>
-                Campaign and reply sync activates after connection verification.
+                {connection?.status === 'connected'
+                  ? 'Campaigns and email accounts are synchronized.'
+                  : 'Run the first synchronization after saving your key.'}
               </small>
             </span>
           </li>

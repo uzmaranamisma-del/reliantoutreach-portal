@@ -1358,6 +1358,18 @@ td button {
   gap: 15px;
   margin-top: 18px;
 }
+.sync-success {
+  margin: 11px 0 0;
+  color: #16734f;
+  font-size: 13px;
+  font-weight: 650;
+}
+.data-freshness {
+  display: block;
+  margin-top: 5px;
+  color: #7c8a92;
+  font-size: 11px;
+}
 .integration-form-foot p {
   display: flex;
   align-items: center;
