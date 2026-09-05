@@ -20,7 +20,43 @@ export type ProviderSender = {
   disconnected?: boolean | null;
   warmup?: boolean | null;
 };
-type Page<T> = { items?: T[] };
+export type ProviderProspect = {
+  prospectId: number;
+  createdAt?: string | null;
+  email: string;
+  sendingStatus?: string | null;
+  sendingActive?: boolean | null;
+  industry?: string | null;
+  city?: string | null;
+  website?: string | null;
+  phone?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  company?: string | null;
+  country?: string | null;
+  domain?: string | null;
+  companySize?: string | null;
+  jobPosition?: string | null;
+  location?: string | null;
+  personalSocial?: string | null;
+  state?: string | null;
+  notes?: string | null;
+  validationStatus?: string | null;
+};
+export type ProviderMessage = {
+  messageId: string;
+  createdAt: string;
+  type: 'Sent' | 'Reply' | 'SentManual';
+  campaignId?: number | null;
+  fromEmail: string;
+  toEmail: string;
+  subject?: string | null;
+  body?: string | null;
+};
+type Page<T, C = string | number> = {
+  items?: T[];
+  pagination?: { nextCursor?: C | null };
+};
 
 export class OutreachProvider {
   private readonly baseUrl = 'https://api.manyreach.com/api/v2';
@@ -55,5 +91,46 @@ export class OutreachProvider {
       '/senders?page=1&limit=1000',
     );
     return Array.isArray(page.items) ? page.items : [];
+  }
+
+  async getProspects(maxPages = 5) {
+    const items: ProviderProspect[] = [];
+    let cursor: number | null = null;
+    for (let pageNumber = 1; pageNumber <= maxPages; pageNumber++) {
+      const cursorQuery: string = cursor ? `&startingAfter=${cursor}` : '';
+      const page: Page<ProviderProspect, number> = await this.get<
+        Page<ProviderProspect, number>
+      >(`/prospects?page=${pageNumber}&limit=1000${cursorQuery}`);
+      items.push(...(Array.isArray(page.items) ? page.items : []));
+      cursor = page.pagination?.nextCursor ?? null;
+      if (!cursor) break;
+    }
+    return items;
+  }
+
+  private async getMessagesByType(type: ProviderMessage['type'], maxPages = 3) {
+    const items: ProviderMessage[] = [];
+    let cursor: string | null = null;
+    for (let pageNumber = 1; pageNumber <= maxPages; pageNumber++) {
+      const cursorQuery: string = cursor
+        ? `&startingAfter=${encodeURIComponent(cursor)}`
+        : '';
+      const page: Page<ProviderMessage, string> = await this.get<
+        Page<ProviderMessage, string>
+      >(`/messages?type=${type}&page=${pageNumber}&limit=1000${cursorQuery}`);
+      items.push(...(Array.isArray(page.items) ? page.items : []));
+      cursor = page.pagination?.nextCursor ?? null;
+      if (!cursor) break;
+    }
+    return items;
+  }
+
+  async getMessages() {
+    const pages = await Promise.all([
+      this.getMessagesByType('Reply'),
+      this.getMessagesByType('Sent'),
+      this.getMessagesByType('SentManual'),
+    ]);
+    return pages.flat();
   }
 }

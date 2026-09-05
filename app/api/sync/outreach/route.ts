@@ -1,6 +1,14 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
-import { campaigns, integrations, mailboxes, syncJobs } from '@/db/schema';
+import {
+  campaigns,
+  integrations,
+  mailboxes,
+  messages,
+  prospects,
+  replies,
+  syncJobs,
+} from '@/db/schema';
 import { decryptSecret, encryptSecret, stableExternalId } from '@/lib/crypto';
 import { OutreachProvider } from '@/lib/outreach/provider';
 import { and, desc, eq } from 'drizzle-orm';
@@ -17,6 +25,19 @@ const statusMap: Record<string, string> = {
   Preparing: 'scheduled',
   Warning: 'paused',
   Blocked: 'paused',
+};
+const prospectStatusMap: Record<string, string> = {
+  Interested: 'interested',
+  MeetingBooked: 'meeting_booked',
+  MeetingCompleted: 'meeting_booked',
+  Won: 'won',
+  NotInterested: 'not_interested',
+  MaybeLater: 'follow_up',
+  Unsub: 'unsubscribed',
+  BounceHard: 'bounced',
+  BounceSoft: 'bounced',
+  AutoOoo: 'follow_up',
+  AutoReply: 'replied',
 };
 
 export async function POST() {
@@ -73,10 +94,16 @@ export async function POST() {
     const provider = new OutreachProvider(
       await decryptSecret(integration.credentialsCiphertext),
     );
-    const [remoteCampaigns, remoteSenders] = await Promise.all([
-      provider.getCampaigns(),
-      provider.getSenders(),
-    ]);
+    const [remoteCampaigns, remoteSenders, remoteProspects, remoteMessages] =
+      await Promise.all([
+        provider.getCampaigns(),
+        provider.getSenders(),
+        provider.getProspects(),
+        provider.getMessages(),
+      ]);
+    const synchronizedCampaignIds = new Set(
+      remoteCampaigns.map((campaign) => campaign.campaignId),
+    );
     for (const item of remoteCampaigns) {
       if (!Number.isInteger(item.campaignId) || !item.name) continue;
       const id = await stableExternalId(
@@ -167,7 +194,161 @@ export async function POST() {
           },
         });
     }
-    const processed = remoteCampaigns.length + remoteSenders.length;
+    const prospectByEmail = new Map<string, { id: string; status: string }>();
+    for (const item of remoteProspects) {
+      if (!Number.isInteger(item.prospectId) || !item.email) continue;
+      const email = item.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+      const id = await stableExternalId(
+        workspaceId,
+        `prospect:${item.prospectId}`,
+      );
+      const status = prospectStatusMap[item.sendingStatus ?? ''] ?? 'imported';
+      const customFields = {
+        company: item.company ?? null,
+        website: item.website ?? null,
+        domain: item.domain ?? null,
+        industry: item.industry ?? null,
+        companySize: item.companySize ?? null,
+        location: item.location ?? null,
+        validationStatus: item.validationStatus ?? null,
+      };
+      const [savedProspect] = await db
+        .insert(prospects)
+        .values({
+          id,
+          workspaceId,
+          email,
+          normalizedEmail: email,
+          firstName: item.firstName ?? null,
+          lastName: item.lastName ?? null,
+          jobTitle: item.jobPosition ?? null,
+          phone: item.phone ?? null,
+          linkedinUrl: item.personalSocial ?? null,
+          country: item.country ?? null,
+          state: item.state ?? null,
+          city: item.city ?? null,
+          source: 'outreach_sync',
+          provider: 'outreach',
+          externalIdCiphertext: await encryptSecret(String(item.prospectId)),
+          status,
+          notes: item.notes ?? null,
+          customFields,
+          createdAt: item.createdAt ? new Date(item.createdAt) : now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [prospects.workspaceId, prospects.normalizedEmail],
+          set: {
+            firstName: item.firstName ?? null,
+            lastName: item.lastName ?? null,
+            jobTitle: item.jobPosition ?? null,
+            phone: item.phone ?? null,
+            linkedinUrl: item.personalSocial ?? null,
+            country: item.country ?? null,
+            state: item.state ?? null,
+            city: item.city ?? null,
+            provider: 'outreach',
+            externalIdCiphertext: await encryptSecret(String(item.prospectId)),
+            status,
+            notes: item.notes ?? null,
+            customFields,
+            updatedAt: now,
+          },
+        })
+        .returning({ id: prospects.id });
+      prospectByEmail.set(email, { id: savedProspect?.id ?? id, status });
+    }
+    for (const item of remoteMessages) {
+      if (
+        !item.messageId ||
+        !item.createdAt ||
+        !item.fromEmail ||
+        !item.toEmail
+      )
+        continue;
+      const externalKey = `${item.type}:${item.messageId}`;
+      const messageId = await stableExternalId(
+        workspaceId,
+        `message:${externalKey}`,
+      );
+      const campaignId =
+        item.campaignId && synchronizedCampaignIds.has(item.campaignId)
+          ? await stableExternalId(workspaceId, `campaign:${item.campaignId}`)
+          : null;
+      const prospectEmail =
+        item.type === 'Reply'
+          ? item.fromEmail.trim().toLowerCase()
+          : item.toEmail.trim().toLowerCase();
+      const prospect = prospectByEmail.get(prospectEmail);
+      const occurredAt = new Date(item.createdAt);
+      const body = item.body ?? '';
+      await db
+        .insert(messages)
+        .values({
+          id: messageId,
+          workspaceId,
+          campaignId,
+          prospectId: prospect?.id ?? null,
+          provider: 'outreach',
+          externalIdCiphertext: await encryptSecret(externalKey),
+          type: item.type === 'Reply' ? 'reply' : 'sent',
+          fromEmail: item.fromEmail.trim().toLowerCase(),
+          toEmail: item.toEmail.trim().toLowerCase(),
+          subject: item.subject ?? null,
+          body,
+          occurredAt,
+          createdAt: occurredAt,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: messages.id,
+          set: {
+            campaignId,
+            prospectId: prospect?.id ?? null,
+            subject: item.subject ?? null,
+            body,
+            updatedAt: now,
+          },
+        });
+      if (item.type !== 'Reply' || !prospect) continue;
+      const replyId = await stableExternalId(
+        workspaceId,
+        `reply:${externalKey}`,
+      );
+      await db
+        .insert(replies)
+        .values({
+          id: replyId,
+          workspaceId,
+          campaignId,
+          prospectId: prospect.id,
+          provider: 'outreach',
+          externalIdCiphertext: await encryptSecret(externalKey),
+          subject: item.subject ?? null,
+          body,
+          providerClassification: prospect.status,
+          classification: null,
+          receivedAt: occurredAt,
+          createdAt: occurredAt,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: replies.id,
+          set: {
+            campaignId,
+            subject: item.subject ?? null,
+            body,
+            providerClassification: prospect.status,
+            updatedAt: now,
+          },
+        });
+    }
+    const processed =
+      remoteCampaigns.length +
+      remoteSenders.length +
+      remoteProspects.length +
+      remoteMessages.length;
     await db
       .update(integrations)
       .set({ status: 'connected', lastSyncedAt: now, updatedAt: now })
@@ -185,6 +366,8 @@ export async function POST() {
       status: 'complete',
       campaigns: remoteCampaigns.length,
       emailAccounts: remoteSenders.length,
+      prospects: remoteProspects.length,
+      messages: remoteMessages.length,
       recordsProcessed: processed,
       syncedAt: now,
     });

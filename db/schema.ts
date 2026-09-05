@@ -120,6 +120,8 @@ export const prospects = sqliteTable(
     state: text('state'),
     city: text('city'),
     source: text('source'),
+    provider: text('provider'),
+    externalIdCiphertext: text('external_id_ciphertext'),
     status: text('status').notNull().default('new'),
     notes: text('notes'),
     customFields: text('custom_fields', { mode: 'json' }),
@@ -173,6 +175,25 @@ export const replies = sqliteTable(
     ...times,
   },
   (t) => [index('replies_workspace_received').on(t.workspaceId, t.receivedAt)],
+);
+export const messages = sqliteTable(
+  'messages',
+  {
+    id: id(),
+    workspaceId: wid(),
+    campaignId: text('campaign_id').references(() => campaigns.id),
+    prospectId: text('prospect_id').references(() => prospects.id),
+    provider: text('provider'),
+    externalIdCiphertext: text('external_id_ciphertext'),
+    type: text('type').notNull(),
+    fromEmail: text('from_email').notNull(),
+    toEmail: text('to_email').notNull(),
+    subject: text('subject'),
+    body: text('body').notNull(),
+    occurredAt: integer('occurred_at', { mode: 'timestamp' }).notNull(),
+    ...times,
+  },
+  (t) => [index('messages_workspace_time').on(t.workspaceId, t.occurredAt)],
 );
 export const meetings = sqliteTable(
   'meetings',

@@ -329,6 +329,7 @@ export default function SectionView({ section }: { section: string }) {
           lastName: string | null;
           jobTitle: string | null;
           status: string;
+          company: string | null;
         }>;
       };
       if (!data.prospects.length) return;
@@ -336,12 +337,51 @@ export default function SectionView({ section }: { section: string }) {
         data.prospects.map((prospect) => [
           `${prospect.firstName ?? ''} ${prospect.lastName ?? ''}`.trim() ||
             prospect.email,
-          '—',
+          prospect.company || '—',
           prospect.jobTitle || '—',
           'Unassigned',
           prospect.status,
           'Saved',
         ]),
+      );
+    });
+  }, [section]);
+  useEffect(() => {
+    if (section !== 'replies') return;
+    void fetch('/api/replies').then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        replies: Array<{
+          prospectEmail: string;
+          firstName: string | null;
+          lastName: string | null;
+          campaignName: string | null;
+          classification: string | null;
+          providerClassification: string | null;
+          receivedAt: string;
+        }>;
+      };
+      if (!data.replies.length) return;
+      setDisplayRows(
+        data.replies.map((reply) => {
+          const name =
+            `${reply.firstName ?? ''} ${reply.lastName ?? ''}`.trim() ||
+            reply.prospectEmail;
+          const status = (
+            reply.classification ||
+            reply.providerClassification ||
+            'unclassified'
+          )
+            .replaceAll('_', ' ')
+            .replace(/\b\w/g, (letter) => letter.toUpperCase());
+          return [
+            name,
+            reply.prospectEmail,
+            reply.campaignName || 'Unassigned',
+            status,
+            new Date(reply.receivedAt).toLocaleString(),
+          ];
+        }),
       );
     });
   }, [section]);

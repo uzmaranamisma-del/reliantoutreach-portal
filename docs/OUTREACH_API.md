@@ -7,7 +7,9 @@ Verified against the user-supplied official OpenAPI document **API Documentation
 - Campaign read: `GET /api/v2/campaigns`, paginated; current sync requests up to 1,000 non-archived records.
 - Sender read: `GET /api/v2/senders`, paginated; current sync requests up to 1,000 records.
 - Campaign time series: `GET /api/v2/campaigns/{id}/stats` is documented but not yet used.
-- Replies: `GET /api/v2/messages?type=Reply` is documented but not yet persisted because reply records require a verified prospect association and inbound messages may include automated or delivery-system mail.
+- Prospect read: `GET /api/v2/prospects`, cursor-paginated; sync stores up to 5,000 records per run and associates messages by normalized email.
+- Messages: `GET /api/v2/messages` requires a message type. Sync requests `Reply`, `Sent`, and `SentManual`, cursor-paginates each type, and stores up to 3,000 records per type per run.
+- Replies are mirrored into the local reply center only when their normalized sender email matches a synchronized prospect. Manual classification remains separate from the provider status and is never overwritten by synchronization.
 - Responses may include 401/406 authentication errors, 403 plan restrictions, 422 validation errors, 429 throttling, and 500 upstream errors. Client-facing messages are provider-neutral.
 
 External IDs are encrypted and never returned to client-facing routes. Dashboard requests read the local database rather than calling the provider.

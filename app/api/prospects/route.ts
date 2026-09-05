@@ -65,6 +65,7 @@ export async function GET() {
       lastName: prospects.lastName,
       jobTitle: prospects.jobTitle,
       status: prospects.status,
+      customFields: prospects.customFields,
       createdAt: prospects.createdAt,
     })
     .from(prospects)
@@ -76,7 +77,19 @@ export async function GET() {
     )
     .orderBy(desc(prospects.createdAt))
     .limit(500);
-  return json({ prospects: rows });
+  return json({
+    prospects: rows.map((row) => ({
+      ...row,
+      company:
+        row.customFields &&
+        typeof row.customFields === 'object' &&
+        'company' in row.customFields &&
+        typeof row.customFields.company === 'string'
+          ? row.customFields.company
+          : null,
+      customFields: undefined,
+    })),
+  });
 }
 export async function POST(request: Request) {
   const ctx = await context();

@@ -15,6 +15,13 @@
       "when": 1788546562999,
       "tag": "0001_tan_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788599703737,
+      "tag": "0002_fresh_ironclad",
+      "breakpoints": true
     }
   ]
 }

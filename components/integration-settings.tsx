@@ -59,13 +59,15 @@ export default function IntegrationSettings() {
         error?: string;
         campaigns?: number;
         emailAccounts?: number;
+        prospects?: number;
+        messages?: number;
       };
       if (!response.ok) {
         setError(data.error || 'Data could not be synchronized.');
         return;
       }
       setSyncResult(
-        `${data.campaigns ?? 0} campaigns and ${data.emailAccounts ?? 0} email accounts synchronized.`,
+        `${data.campaigns ?? 0} campaigns, ${data.emailAccounts ?? 0} email accounts, ${data.prospects ?? 0} prospects and ${data.messages ?? 0} messages synchronized.`,
       );
       const status = await fetch('/api/integrations/outreach');
       if (status.ok)
