@@ -72,6 +72,16 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState('Demo data');
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [campaignSettings, setCampaignSettings] = useState<{
+    initialEmail: {
+      subject: string | null;
+      body: string | null;
+      textOnly: boolean | null;
+      openCount: number;
+      clickCount: number;
+      replyCount: number;
+      bounceCount: number;
+      interestedCount: number;
+    } | null;
     dailyLimit: number | null;
     dailyLimitPer: string | null;
     scheduleSending: boolean | null;
@@ -98,6 +108,7 @@ export default function Dashboard() {
       } | null;
     }>
   >([]);
+  const [selectedSequenceStep, setSelectedSequenceStep] = useState(0);
   useEffect(() => {
     const campaignId = new URLSearchParams(window.location.search).get(
       'campaign',
@@ -131,6 +142,16 @@ export default function Dashboard() {
           name: string;
           status: string;
           settings: {
+            initialEmail: {
+              subject: string | null;
+              body: string | null;
+              textOnly: boolean | null;
+              openCount: number;
+              clickCount: number;
+              replyCount: number;
+              bounceCount: number;
+              interestedCount: number;
+            } | null;
             dailyLimit: number | null;
             dailyLimitPer: string | null;
             scheduleSending: boolean | null;
@@ -211,6 +232,7 @@ export default function Dashboard() {
       setSelectedCampaign(data.selectedCampaign?.name ?? null);
       setCampaignSettings(data.selectedCampaign?.settings ?? null);
       setCampaignSequence(data.selectedCampaign?.sequence ?? []);
+      setSelectedSequenceStep(0);
     });
   }, []);
   const liveFunnel = liveTotals
@@ -230,6 +252,47 @@ export default function Dashboard() {
         ['Positive', liveTotals.positiveReplies, 'positive'],
       ] as const)
     : null;
+  const initialEmail = campaignSettings?.initialEmail;
+  const workspaceSteps = selectedCampaign
+    ? [
+        ...(initialEmail
+          ? [
+              {
+                id: 'initial-email',
+                label: 'Initial Email',
+                sequence: 'Initial outreach',
+                condition: 'All campaign prospects',
+                wait: 'Sends first',
+                subject: initialEmail.subject || 'No subject',
+                body: initialEmail.body || '',
+                thread: 'New message',
+                sent: null,
+                replies: initialEmail.replyCount,
+                opens: initialEmail.openCount,
+              },
+            ]
+          : []),
+        ...campaignSequence.map((step, index) => ({
+          id: step.id,
+          label: `Follow-up ${index + 1}`,
+          sequence: step.sequenceName || 'Sequence',
+          condition: step.sequenceCondition || 'Not replied',
+          wait: `Send after ${step.waitAmount ?? 0} ${step.waitUnit || 'days'}`,
+          subject: step.settings?.useOriginalSubject
+            ? 'Subject from previous email'
+            : step.subject || 'No subject',
+          body: step.body || '',
+          thread: step.settings?.sendInSameThread
+            ? 'Same thread'
+            : 'New message',
+          sent: step.settings?.sentCount ?? 0,
+          replies: step.settings?.replyCount ?? 0,
+          opens: 0,
+        })),
+      ]
+    : [];
+  const activeWorkspaceStep =
+    workspaceSteps[selectedSequenceStep] ?? workspaceSteps[0] ?? null;
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#142033]">
       <aside className={`sidebar ${open ? 'open' : ''}`}>
@@ -414,66 +477,74 @@ export default function Dashboard() {
             >
               <div className="sequence-heading">
                 <div>
-                  <p>EMAIL SEQUENCE</p>
-                  <h2>Scheduled follow-ups</h2>
+                  <p>CAMPAIGN WORKSPACE</p>
+                  <h2>Steps</h2>
                   <span>
                     Read-only configuration synchronized from outreach
                     infrastructure
                   </span>
                 </div>
-                <span>{campaignSequence.length} steps</span>
+                <span>{workspaceSteps.length} steps</span>
               </div>
-              {campaignSequence.length ? (
-                <div className="sequence-list">
-                  {campaignSequence.map((step) => (
-                    <article key={step.id} className="sequence-step">
-                      <div className="sequence-index">{step.stepNumber}</div>
-                      <div className="sequence-copy">
-                        <div className="sequence-meta">
-                          <b>
-                            {step.sequenceName || `Step ${step.stepNumber}`}
-                          </b>
-                          <span>
-                            Wait {step.waitAmount ?? 0}{' '}
-                            {step.waitUnit || 'days'}
-                          </span>
-                          {step.sequenceCondition && (
-                            <span>{step.sequenceCondition}</span>
-                          )}
+              {activeWorkspaceStep ? (
+                <div className="sequence-workspace">
+                  <aside className="sequence-rail" aria-label="Campaign steps">
+                    {workspaceSteps.map((step, index) => (
+                      <button
+                        key={step.id}
+                        className={
+                          index === selectedSequenceStep ? 'active' : ''
+                        }
+                        onClick={() => setSelectedSequenceStep(index)}
+                      >
+                        <span>{index + 1}</span>
+                        <div>
+                          <b>{step.label}</b>
+                          <small>{step.subject}</small>
+                          <em>{step.wait}</em>
                         </div>
-                        <h3>
-                          {step.settings?.useOriginalSubject
-                            ? 'Use original subject'
-                            : step.subject || 'No subject'}
-                        </h3>
-                        <p>
-                          {step.body
-                            ?.replace(/<[^>]*>/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .trim() || 'No message body available.'}
-                        </p>
-                        <footer>
-                          <span>
-                            {step.settings?.sendInSameThread
-                              ? 'Same thread'
-                              : 'New message'}
-                          </span>
-                          <span>
-                            {new Intl.NumberFormat().format(
-                              step.settings?.sentCount ?? 0,
-                            )}{' '}
-                            sent
-                          </span>
-                          <span>
-                            {new Intl.NumberFormat().format(
-                              step.settings?.replyCount ?? 0,
-                            )}{' '}
-                            replies
-                          </span>
-                        </footer>
+                      </button>
+                    ))}
+                  </aside>
+                  <article className="sequence-preview">
+                    <div className="preview-toolbar">
+                      <div>
+                        <span>{activeWorkspaceStep.sequence}</span>
+                        <b>{activeWorkspaceStep.condition}</b>
                       </div>
-                    </article>
-                  ))}
+                      <span className="readonly-badge">Read only</span>
+                    </div>
+                    <div className="preview-field">
+                      <span className="field-label">Subject</span>
+                      <div>{activeWorkspaceStep.subject}</div>
+                    </div>
+                    <div className="preview-field body-field">
+                      <span className="field-label">Body</span>
+                      <div>
+                        {activeWorkspaceStep.body
+                          .replace(/<br\s*\/?\s*>/gi, '\n')
+                          .replace(/<\/p>/gi, '\n\n')
+                          .replace(/<[^>]*>/g, '')
+                          .replace(/&nbsp;/g, ' ')
+                          .trim() || 'No message body available.'}
+                      </div>
+                    </div>
+                    <footer className="preview-stats">
+                      <span>{activeWorkspaceStep.wait}</span>
+                      <span>{activeWorkspaceStep.thread}</span>
+                      <span>
+                        {activeWorkspaceStep.sent == null
+                          ? 'Sent total unavailable'
+                          : `${new Intl.NumberFormat().format(activeWorkspaceStep.sent)} sent`}
+                      </span>
+                      <span>
+                        {new Intl.NumberFormat().format(
+                          activeWorkspaceStep.replies,
+                        )}{' '}
+                        replies
+                      </span>
+                    </footer>
+                  </article>
                 </div>
               ) : (
                 <div className="sequence-empty">

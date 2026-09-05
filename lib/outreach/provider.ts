@@ -10,6 +10,14 @@ export type ProviderCampaign = {
   bounceCount?: number | null;
   replyCount?: number | null;
   interestedCount?: number | null;
+  subject?: string | null;
+  body?: string | null;
+  textOnlyEmails?: boolean | null;
+  initialOpenCount?: number | null;
+  initialClickCount?: number | null;
+  initialReplyCount?: number | null;
+  initialBounceCount?: number | null;
+  initialInterestedCount?: number | null;
   dailyLimit?: number | null;
   dailyLimitPer?: string | null;
   scheduleSending?: boolean | null;

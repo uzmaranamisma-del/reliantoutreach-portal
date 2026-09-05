@@ -136,6 +136,16 @@ export async function POST() {
       const sent = Math.max(0, item.sentCount ?? 0);
       const bounced = Math.max(0, item.bounceCount ?? 0);
       const campaignSettings = {
+        initialEmail: {
+          subject: item.subject ?? null,
+          body: item.body ?? null,
+          textOnly: item.textOnlyEmails ?? null,
+          openCount: item.initialOpenCount ?? 0,
+          clickCount: item.initialClickCount ?? 0,
+          replyCount: item.initialReplyCount ?? 0,
+          bounceCount: item.initialBounceCount ?? 0,
+          interestedCount: item.initialInterestedCount ?? 0,
+        },
         dailyLimit: item.dailyLimit ?? null,
         dailyLimitPer: item.dailyLimitPer ?? null,
         scheduleSending: item.scheduleSending ?? null,
