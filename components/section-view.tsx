@@ -286,8 +286,38 @@ export default function SectionView({ section }: { section: string }) {
   const [domainImportOpen, setDomainImportOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailImportOpen, setEmailImportOpen] = useState(false);
+  const [campaignIds, setCampaignIds] = useState<string[]>([]);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
+  useEffect(() => {
+    if (section !== 'campaigns') return;
+    void fetch('/api/dashboard').then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        campaigns: Array<{
+          id: string;
+          name: string;
+          status: string;
+          contacted: number;
+          sent: number;
+          replies: number;
+        }>;
+      };
+      if (!data.campaigns.length) return;
+      const format = new Intl.NumberFormat();
+      setCampaignIds(data.campaigns.map((campaign) => campaign.id));
+      setDisplayRows(
+        data.campaigns.map((campaign) => [
+          campaign.name,
+          campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1),
+          format.format(campaign.contacted),
+          format.format(campaign.sent),
+          format.format(campaign.replies),
+          '—',
+        ]),
+      );
+    });
+  }, [section]);
   useEffect(() => {
     if (section !== 'prospects') return;
     void fetch('/api/prospects').then(async (response) => {
@@ -450,7 +480,27 @@ export default function SectionView({ section }: { section: string }) {
                     </thead>
                     <tbody>
                       {displayRows.map((row, i) => (
-                        <tr key={i}>
+                        <tr
+                          key={i}
+                          className={
+                            section === 'campaigns' ? 'clickable-row' : ''
+                          }
+                          tabIndex={section === 'campaigns' ? 0 : undefined}
+                          onClick={() => {
+                            if (section === 'campaigns' && campaignIds[i])
+                              window.location.href = `/dashboard?campaign=${encodeURIComponent(campaignIds[i])}`;
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              section === 'campaigns' &&
+                              campaignIds[i] &&
+                              (event.key === 'Enter' || event.key === ' ')
+                            ) {
+                              event.preventDefault();
+                              window.location.href = `/dashboard?campaign=${encodeURIComponent(campaignIds[i])}`;
+                            }
+                          }}
+                        >
                           {row.map((cell, j) => (
                             <td key={j}>{j === 0 ? <b>{cell}</b> : cell}</td>
                           ))}

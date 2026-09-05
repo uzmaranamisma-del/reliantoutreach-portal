@@ -1370,6 +1370,34 @@ td button {
   color: #7c8a92;
   font-size: 11px;
 }
+.campaign-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  margin-top: 0.65rem;
+  padding: 0.38rem 0.65rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.45rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+.campaign-filter:hover {
+  background: #dbeafe;
+}
+.clickable-row {
+  cursor: pointer;
+}
+.clickable-row:hover td {
+  background: #f8fbff;
+}
+.clickable-row:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
 .integration-form-foot p {
   display: flex;
   align-items: center;

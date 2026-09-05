@@ -62,8 +62,15 @@ export default function Dashboard() {
   const [campaigns, setCampaigns] =
     useState<readonly (readonly string[])[]>(seedCampaigns);
   const [lastUpdated, setLastUpdated] = useState('Demo data');
+  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   useEffect(() => {
-    void fetch('/api/dashboard').then(async (response) => {
+    const campaignId = new URLSearchParams(window.location.search).get(
+      'campaign',
+    );
+    const endpoint = campaignId
+      ? `/api/dashboard?campaign=${encodeURIComponent(campaignId)}`
+      : '/api/dashboard';
+    void fetch(endpoint).then(async (response) => {
       if (!response.ok) return;
       const data = (await response.json()) as {
         metrics: {
@@ -81,6 +88,7 @@ export default function Dashboard() {
           replyRate: number;
         }>;
         lastUpdatedAt: string | null;
+        selectedCampaign: { id: string; name: string } | null;
       };
       if (!data.lastUpdatedAt) return;
       const format = new Intl.NumberFormat();
@@ -125,6 +133,7 @@ export default function Dashboard() {
       setLastUpdated(
         `Last updated ${new Date(data.lastUpdatedAt).toLocaleString()}`,
       );
+      setSelectedCampaign(data.selectedCampaign?.name ?? null);
     });
   }, []);
   return (
@@ -218,7 +227,16 @@ export default function Dashboard() {
             <div>
               <p>THURSDAY, SEPTEMBER 4</p>
               <h1>Good afternoon, Farhan</h1>
-              <span>Here’s how your outbound operation is performing.</span>
+              <span>
+                {selectedCampaign
+                  ? `Showing live performance for ${selectedCampaign}.`
+                  : 'Here’s how your outbound operation is performing.'}
+              </span>
+              {selectedCampaign && (
+                <a className="campaign-filter" href="/dashboard">
+                  {selectedCampaign} <b>×</b>
+                </a>
+              )}
               <small className="data-freshness">{lastUpdated}</small>
             </div>
             <label className="period">
