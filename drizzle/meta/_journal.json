@@ -29,6 +29,13 @@
       "when": 1788617156541,
       "tag": "0003_natural_kat_farrell",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788636696978,
+      "tag": "0004_worthless_vindicator",
+      "breakpoints": true
     }
   ]
 }

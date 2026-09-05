@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `open_count` integer DEFAULT 0 NOT NULL;

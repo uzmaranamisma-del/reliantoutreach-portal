@@ -354,6 +354,7 @@ export async function POST() {
           toEmail: item.toEmail.trim().toLowerCase(),
           subject: item.subject ?? null,
           body,
+          openCount: item.openCount ?? 0,
           occurredAt,
           createdAt: occurredAt,
           updatedAt: now,
@@ -365,6 +366,7 @@ export async function POST() {
             prospectId: prospect?.id ?? null,
             subject: item.subject ?? null,
             body,
+            openCount: item.openCount ?? 0,
             updatedAt: now,
           },
         });

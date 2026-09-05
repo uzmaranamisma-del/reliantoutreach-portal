@@ -27,6 +27,7 @@ export async function GET() {
     ctx.db
       .select({
         fromEmail: messages.fromEmail,
+        openCount: messages.openCount,
         occurredAt: messages.occurredAt,
       })
       .from(messages)
@@ -48,27 +49,51 @@ export async function GET() {
     );
   const performance = new Map<
     string,
-    { sent14d: number; sent7d: number; sent24h: number }
+    {
+      sent14d: number;
+      opened14d: number;
+      sent7d: number;
+      opened7d: number;
+      sent24h: number;
+      opened24h: number;
+    }
   >();
   for (const message of sentRows) {
     const domain = message.fromEmail.split('@')[1]?.toLowerCase();
     if (!domain) continue;
     const values = performance.get(domain) ?? {
       sent14d: 0,
+      opened14d: 0,
       sent7d: 0,
+      opened7d: 0,
       sent24h: 0,
+      opened24h: 0,
     };
     const age = now - message.occurredAt.getTime();
     values.sent14d++;
-    if (age <= 7 * 24 * 60 * 60 * 1000) values.sent7d++;
-    if (age <= 24 * 60 * 60 * 1000) values.sent24h++;
+    if (message.openCount > 0) values.opened14d++;
+    if (age <= 7 * 24 * 60 * 60 * 1000) {
+      values.sent7d++;
+      if (message.openCount > 0) values.opened7d++;
+    }
+    if (age <= 24 * 60 * 60 * 1000) {
+      values.sent24h++;
+      if (message.openCount > 0) values.opened24h++;
+    }
     performance.set(domain, values);
   }
   return json({
     domains: rows.map((row) => ({
       ...row,
       mailboxCount: accountCounts.get(row.domain) ?? 0,
-      ...(performance.get(row.domain) ?? { sent14d: 0, sent7d: 0, sent24h: 0 }),
+      ...(performance.get(row.domain) ?? {
+        sent14d: 0,
+        opened14d: 0,
+        sent7d: 0,
+        opened7d: 0,
+        sent24h: 0,
+        opened24h: 0,
+      }),
       bounceMetricsAvailable: false,
     })),
   });

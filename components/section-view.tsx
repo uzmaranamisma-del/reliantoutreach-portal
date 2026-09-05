@@ -30,6 +30,7 @@ import {
   ImportEmailAccounts,
 } from '@/components/email-account-manager';
 import IntegrationSettings from '@/components/integration-settings';
+import DomainDashboard from '@/components/domain-dashboard';
 const nav = [
   [LayoutDashboard, 'Dashboard', 'dashboard'],
   [Users, 'Prospects', 'prospects'],
@@ -288,7 +289,6 @@ export default function SectionView({ section }: { section: string }) {
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailImportOpen, setEmailImportOpen] = useState(false);
   const [campaignIds, setCampaignIds] = useState<string[]>([]);
-  const [dnsChecking, setDnsChecking] = useState(false);
   const [domainRefresh, setDomainRefresh] = useState(0);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
@@ -389,42 +389,6 @@ export default function SectionView({ section }: { section: string }) {
     });
   }, [section]);
   useEffect(() => {
-    if (section !== 'domains') return;
-    void fetch('/api/domains').then(async (response) => {
-      if (!response.ok) return;
-      const data = (await response.json()) as {
-        domains: Array<{
-          domain: string;
-          status: string;
-          spfStatus: string | null;
-          dkimStatus: string | null;
-          dmarcStatus: string | null;
-          mxStatus: string | null;
-          sent14d: number;
-          sent7d: number;
-          sent24h: number;
-          mailboxCount: number;
-        }>;
-      };
-      if (data.domains.length)
-        setDisplayRows(
-          data.domains.map((item) => [
-            item.domain,
-            item.status,
-            new Intl.NumberFormat().format(item.sent14d),
-            new Intl.NumberFormat().format(item.sent7d),
-            new Intl.NumberFormat().format(item.sent24h),
-            'Not available',
-            item.spfStatus ?? 'Pending',
-            item.dkimStatus ?? 'Selector needed',
-            item.dmarcStatus ?? 'Pending',
-            item.mxStatus ?? 'Pending',
-            String(item.mailboxCount),
-          ]),
-        );
-    });
-  }, [section, domainRefresh]);
-  useEffect(() => {
     if (section !== 'email-accounts') return;
     void fetch('/api/email-accounts').then(async (response) => {
       if (!response.ok) return;
@@ -504,6 +468,8 @@ export default function SectionView({ section }: { section: string }) {
           </div>
           {section === 'settings' ? (
             <IntegrationSettings />
+          ) : section === 'domains' ? (
+            <DomainDashboard refreshKey={domainRefresh} />
           ) : (
             <>
               <div className="toolbar">
@@ -514,25 +480,6 @@ export default function SectionView({ section }: { section: string }) {
                     placeholder={`Search ${page.title.toLowerCase()}…`}
                   />
                 </div>
-                {section === 'domains' && (
-                  <button
-                    disabled={dnsChecking}
-                    onClick={async () => {
-                      setDnsChecking(true);
-                      try {
-                        const response = await fetch('/api/domains/check', {
-                          method: 'POST',
-                        });
-                        if (response.ok) setDomainRefresh((value) => value + 1);
-                      } finally {
-                        setDnsChecking(false);
-                      }
-                    }}
-                  >
-                    <Globe2 size={15} />
-                    {dnsChecking ? 'Checking DNS…' : 'Check DNS'}
-                  </button>
-                )}
                 <button>
                   <Filter size={15} /> Filter
                 </button>
@@ -607,14 +554,12 @@ export default function SectionView({ section }: { section: string }) {
           <AddDomain
             open={domainOpen}
             onOpenChange={setDomainOpen}
-            onAdded={(row) => setDisplayRows((previous) => [row, ...previous])}
+            onAdded={() => setDomainRefresh((value) => value + 1)}
           />
           <DomainImport
             open={domainImportOpen}
             onOpenChange={setDomainImportOpen}
-            onImported={(rows) =>
-              setDisplayRows((previous) => [...rows, ...previous])
-            }
+            onImported={() => setDomainRefresh((value) => value + 1)}
           />
         </>
       )}

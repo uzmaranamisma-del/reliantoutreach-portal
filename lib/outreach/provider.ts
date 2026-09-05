@@ -85,6 +85,7 @@ export type ProviderMessage = {
   toEmail: string;
   subject?: string | null;
   body?: string | null;
+  openCount?: number | null;
 };
 type Page<T, C = string | number> = {
   items?: T[];

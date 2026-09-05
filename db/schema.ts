@@ -191,6 +191,7 @@ export const messages = sqliteTable(
     toEmail: text('to_email').notNull(),
     subject: text('subject'),
     body: text('body').notNull(),
+    openCount: integer('open_count').notNull().default(0),
     occurredAt: integer('occurred_at', { mode: 'timestamp' }).notNull(),
     ...times,
   },
