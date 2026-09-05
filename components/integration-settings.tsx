@@ -61,13 +61,17 @@ export default function IntegrationSettings() {
         emailAccounts?: number;
         prospects?: number;
         messages?: number;
+        warnings?: string[];
       };
       if (!response.ok) {
         setError(data.error || 'Data could not be synchronized.');
         return;
       }
+      const summary = `${data.campaigns ?? 0} campaigns, ${data.emailAccounts ?? 0} email accounts, ${data.prospects ?? 0} prospects and ${data.messages ?? 0} messages synchronized.`;
       setSyncResult(
-        `${data.campaigns ?? 0} campaigns, ${data.emailAccounts ?? 0} email accounts, ${data.prospects ?? 0} prospects and ${data.messages ?? 0} messages synchronized.`,
+        data.warnings?.length
+          ? `${summary} Some additional records are temporarily unavailable; run sync again shortly.`
+          : summary,
       );
       const status = await fetch('/api/integrations/outreach');
       if (status.ok)

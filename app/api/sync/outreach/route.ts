@@ -94,13 +94,22 @@ export async function POST() {
     const provider = new OutreachProvider(
       await decryptSecret(integration.credentialsCiphertext),
     );
-    const [remoteCampaigns, remoteSenders, remoteProspects, remoteMessages] =
-      await Promise.all([
-        provider.getCampaigns(),
-        provider.getSenders(),
-        provider.getProspects(),
-        provider.getMessages(),
-      ]);
+    const [remoteCampaigns, remoteSenders] = await Promise.all([
+      provider.getCampaigns(),
+      provider.getSenders(),
+    ]);
+    const optionalResults = await Promise.allSettled([
+      provider.getProspects(),
+      provider.getMessages(),
+    ]);
+    const remoteProspects =
+      optionalResults[0].status === 'fulfilled' ? optionalResults[0].value : [];
+    const remoteMessages =
+      optionalResults[1].status === 'fulfilled' ? optionalResults[1].value : [];
+    const warnings = [
+      optionalResults[0].status === 'rejected' ? 'prospects_unavailable' : null,
+      optionalResults[1].status === 'rejected' ? 'messages_unavailable' : null,
+    ].filter(Boolean);
     const synchronizedCampaignIds = new Set(
       remoteCampaigns.map((campaign) => campaign.campaignId),
     );
@@ -397,6 +406,7 @@ export async function POST() {
       emailAccounts: remoteSenders.length,
       prospects: remoteProspects.length,
       messages: remoteMessages.length,
+      warnings,
       recordsProcessed: processed,
       syncedAt: now,
     });
