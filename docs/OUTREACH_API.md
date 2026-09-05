@@ -8,6 +8,8 @@ Verified against the user-supplied official OpenAPI document **API Documentation
 - Campaign read responses also supply daily limits, timezone, send delay, enabled weekdays, and daily sending windows. These fields are cached as provider-neutral campaign settings and shown on the selected campaign dashboard.
 - Sender read: `GET /api/v2/senders`, paginated; current sync requests up to 1,000 records.
 - Sender daily limits, pacing, ramp-up, and warm-up settings are cached internally for the Email Accounts experience. Credentials and connection internals are never returned.
+- The V2 specification does not expose the provider application's domain-performance report as a public endpoint. Domain send totals are therefore calculated from synchronized sent messages for the last 14 days, 7 days, and 24 hours. Domain-level bounce counts are labelled unavailable rather than estimated.
+- Sending domains are discovered from synchronized email accounts. SPF, DMARC, and MX health use independent DNS-over-HTTPS checks; DKIM remains `selector needed` until a selector is known.
 - Campaign time series: `GET /api/v2/campaigns/{id}/stats` is documented but not yet used.
 - Prospect read: `GET /api/v2/prospects`, cursor-paginated; sync stores up to 5,000 records per run and associates messages by normalized email.
 - Messages: `GET /api/v2/messages` requires a message type. Sync requests `Reply`, `Sent`, and `SentManual`, cursor-paginates each type, and stores up to 3,000 records per type per run.

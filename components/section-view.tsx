@@ -182,19 +182,20 @@ const content: Record<
     title: 'Domains',
     subtitle: 'Track DNS configuration and sending readiness.',
     action: 'Add domain',
-    headers: ['Domain', 'Status', 'SPF', 'DKIM', 'DMARC', 'Mailboxes'],
-    rows: [
-      ['acmegrowth.co', 'Healthy', 'Verified', 'Verified', 'Verified', '5'],
-      ['acmeoutbound.com', 'Healthy', 'Verified', 'Verified', 'Verified', '4'],
-      [
-        'acmepipeline.co',
-        'Warning',
-        'Verified',
-        'Selector needed',
-        'Missing',
-        '3',
-      ],
+    headers: [
+      'Domain',
+      'Status',
+      'Sent · 14 days',
+      'Sent · 7 days',
+      'Sent · 24 hours',
+      'Bounced',
+      'SPF',
+      'DKIM',
+      'DMARC',
+      'MX',
+      'Mailboxes',
     ],
+    rows: [],
   },
   meetings: {
     title: 'Meetings',
@@ -287,6 +288,8 @@ export default function SectionView({ section }: { section: string }) {
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailImportOpen, setEmailImportOpen] = useState(false);
   const [campaignIds, setCampaignIds] = useState<string[]>([]);
+  const [dnsChecking, setDnsChecking] = useState(false);
+  const [domainRefresh, setDomainRefresh] = useState(0);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
   useEffect(() => {
@@ -396,6 +399,11 @@ export default function SectionView({ section }: { section: string }) {
           spfStatus: string | null;
           dkimStatus: string | null;
           dmarcStatus: string | null;
+          mxStatus: string | null;
+          sent14d: number;
+          sent7d: number;
+          sent24h: number;
+          mailboxCount: number;
         }>;
       };
       if (data.domains.length)
@@ -403,14 +411,19 @@ export default function SectionView({ section }: { section: string }) {
           data.domains.map((item) => [
             item.domain,
             item.status,
+            new Intl.NumberFormat().format(item.sent14d),
+            new Intl.NumberFormat().format(item.sent7d),
+            new Intl.NumberFormat().format(item.sent24h),
+            'Not available',
             item.spfStatus ?? 'Pending',
             item.dkimStatus ?? 'Selector needed',
             item.dmarcStatus ?? 'Pending',
-            '0',
+            item.mxStatus ?? 'Pending',
+            String(item.mailboxCount),
           ]),
         );
     });
-  }, [section]);
+  }, [section, domainRefresh]);
   useEffect(() => {
     if (section !== 'email-accounts') return;
     void fetch('/api/email-accounts').then(async (response) => {
@@ -501,6 +514,25 @@ export default function SectionView({ section }: { section: string }) {
                     placeholder={`Search ${page.title.toLowerCase()}…`}
                   />
                 </div>
+                {section === 'domains' && (
+                  <button
+                    disabled={dnsChecking}
+                    onClick={async () => {
+                      setDnsChecking(true);
+                      try {
+                        const response = await fetch('/api/domains/check', {
+                          method: 'POST',
+                        });
+                        if (response.ok) setDomainRefresh((value) => value + 1);
+                      } finally {
+                        setDnsChecking(false);
+                      }
+                    }}
+                  >
+                    <Globe2 size={15} />
+                    {dnsChecking ? 'Checking DNS…' : 'Check DNS'}
+                  </button>
+                )}
                 <button>
                   <Filter size={15} /> Filter
                 </button>

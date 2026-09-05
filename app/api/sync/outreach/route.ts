@@ -2,6 +2,7 @@ import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
 import {
   campaigns,
+  domains,
   integrations,
   mailboxes,
   messages,
@@ -231,6 +232,24 @@ export async function POST() {
             updatedAt: now,
           },
         });
+      const domain = email.split('@')[1];
+      if (domain) {
+        await db
+          .insert(domains)
+          .values({
+            id: await stableExternalId(workspaceId, `domain:${domain}`),
+            workspaceId,
+            domain,
+            status: 'pending',
+            spfStatus: 'pending',
+            dkimStatus: 'selector_needed',
+            dmarcStatus: 'pending',
+            mxStatus: 'pending',
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoNothing();
+      }
     }
     const prospectByEmail = new Map<string, { id: string; status: string }>();
     for (const item of remoteProspects) {

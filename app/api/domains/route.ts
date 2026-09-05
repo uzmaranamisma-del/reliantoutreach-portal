@@ -1,7 +1,7 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
-import { domains } from '@/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { domains, mailboxes, messages } from '@/db/schema';
+import { and, desc, eq, gte } from 'drizzle-orm';
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 async function workspace() {
@@ -11,13 +11,67 @@ async function workspace() {
 export async function GET() {
   const ctx = await workspace();
   if (!ctx) return json({ error: 'Authentication required' }, 401);
-  const rows = await ctx.db
-    .select()
-    .from(domains)
-    .where(eq(domains.workspaceId, ctx.workspaceId))
-    .orderBy(desc(domains.createdAt))
-    .limit(200);
-  return json({ domains: rows });
+  const cutoff14 = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const [rows, accountRows, sentRows] = await Promise.all([
+    ctx.db
+      .select()
+      .from(domains)
+      .where(eq(domains.workspaceId, ctx.workspaceId))
+      .orderBy(desc(domains.createdAt))
+      .limit(200),
+    ctx.db
+      .select({ domain: mailboxes.domain })
+      .from(mailboxes)
+      .where(eq(mailboxes.workspaceId, ctx.workspaceId))
+      .limit(2000),
+    ctx.db
+      .select({
+        fromEmail: messages.fromEmail,
+        occurredAt: messages.occurredAt,
+      })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.workspaceId, ctx.workspaceId),
+          eq(messages.type, 'sent'),
+          gte(messages.occurredAt, cutoff14),
+        ),
+      )
+      .limit(10000),
+  ]);
+  const now = Date.now();
+  const accountCounts = new Map<string, number>();
+  for (const account of accountRows)
+    accountCounts.set(
+      account.domain,
+      (accountCounts.get(account.domain) ?? 0) + 1,
+    );
+  const performance = new Map<
+    string,
+    { sent14d: number; sent7d: number; sent24h: number }
+  >();
+  for (const message of sentRows) {
+    const domain = message.fromEmail.split('@')[1]?.toLowerCase();
+    if (!domain) continue;
+    const values = performance.get(domain) ?? {
+      sent14d: 0,
+      sent7d: 0,
+      sent24h: 0,
+    };
+    const age = now - message.occurredAt.getTime();
+    values.sent14d++;
+    if (age <= 7 * 24 * 60 * 60 * 1000) values.sent7d++;
+    if (age <= 24 * 60 * 60 * 1000) values.sent24h++;
+    performance.set(domain, values);
+  }
+  return json({
+    domains: rows.map((row) => ({
+      ...row,
+      mailboxCount: accountCounts.get(row.domain) ?? 0,
+      ...(performance.get(row.domain) ?? { sent14d: 0, sent7d: 0, sent24h: 0 }),
+      bounceMetricsAvailable: false,
+    })),
+  });
 }
 export async function POST(request: Request) {
   const ctx = await workspace();
