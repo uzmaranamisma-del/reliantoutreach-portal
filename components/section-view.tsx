@@ -21,7 +21,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CsvImport from '@/components/csv-import';
 import AddDomain from '@/components/add-domain';
 import DomainImport from '@/components/domain-import';
@@ -308,6 +308,8 @@ export default function SectionView({ section }: { section: string }) {
   const [prospectHasNext, setProspectHasNext] = useState(false);
   const [prospectLoading, setProspectLoading] = useState(false);
   const [prospectRefresh, setProspectRefresh] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
   useEffect(() => {
@@ -455,6 +457,50 @@ export default function SectionView({ section }: { section: string }) {
         );
     });
   }, [section]);
+  const filterOptions = useMemo(() => {
+    const filterColumn = page.headers.findIndex((header) =>
+      ['Status', 'Health', 'Role', 'Category', 'Stage'].includes(header),
+    );
+    if (filterColumn < 0) return [];
+    const values = new Set<string>();
+    displayRows.forEach((row) => {
+      const value = String(row[filterColumn] ?? '').trim();
+      if (value && value !== '—') values.add(value);
+    });
+    return Array.from(values).slice(0, 20);
+  }, [displayRows, page.headers]);
+  const visibleRows = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase();
+    return displayRows
+      .map((row, originalIndex) => ({ row, originalIndex }))
+      .filter(({ row }) => {
+        const matchesSearch =
+          !query ||
+          row.some((cell) => String(cell).toLocaleLowerCase().includes(query));
+        const matchesFilter =
+          statusFilter === 'all' ||
+          row.some((cell) => String(cell) === statusFilter);
+        return matchesSearch && matchesFilter;
+      });
+  }, [displayRows, searchTerm, statusFilter]);
+  const exportRows = () => {
+    const escape = (value: string) =>
+      `"${value.replaceAll('"', '""').replaceAll('\r', ' ').replaceAll('\n', ' ')}"`;
+    const csv = [
+      page.headers.map((header) => escape(header)).join(','),
+      ...visibleRows.map(({ row }) =>
+        row.map((cell) => escape(String(cell))).join(','),
+      ),
+    ].join('\r\n');
+    const url = URL.createObjectURL(
+      new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${section}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#142033]">
       <Aside active={section} open={open} session={session} />
@@ -520,12 +566,28 @@ export default function SectionView({ section }: { section: string }) {
                   <input
                     aria-label={`Search ${page.title}`}
                     placeholder={`Search ${page.title.toLowerCase()}…`}
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
                   />
                 </div>
-                <button>
-                  <Filter size={15} /> Filter
-                </button>
-                <button>
+                {filterOptions.length > 0 && (
+                  <label className="table-filter">
+                    <Filter size={15} />
+                    <select
+                      aria-label={`Filter ${page.title}`}
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value)}
+                    >
+                      <option value="all">All records</option>
+                      {filterOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <button onClick={exportRows} disabled={!visibleRows.length}>
                   <Download size={15} /> Export
                 </button>
               </div>
@@ -540,25 +602,28 @@ export default function SectionView({ section }: { section: string }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {displayRows.map((row, i) => (
+                      {visibleRows.map(({ row, originalIndex }) => (
                         <tr
-                          key={i}
+                          key={originalIndex}
                           className={
                             section === 'campaigns' ? 'clickable-row' : ''
                           }
                           tabIndex={section === 'campaigns' ? 0 : undefined}
                           onClick={() => {
-                            if (section === 'campaigns' && campaignIds[i])
-                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[i])}`;
+                            if (
+                              section === 'campaigns' &&
+                              campaignIds[originalIndex]
+                            )
+                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[originalIndex])}`;
                           }}
                           onKeyDown={(event) => {
                             if (
                               section === 'campaigns' &&
-                              campaignIds[i] &&
+                              campaignIds[originalIndex] &&
                               (event.key === 'Enter' || event.key === ' ')
                             ) {
                               event.preventDefault();
-                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[i])}`;
+                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[originalIndex])}`;
                             }
                           }}
                         >
@@ -573,8 +638,8 @@ export default function SectionView({ section }: { section: string }) {
                 <div className="table-footer">
                   <span>
                     {section === 'prospects'
-                      ? `Page ${prospectPage} · showing ${displayRows.length} of up to 100 records`
-                      : `Showing ${displayRows.length} records`}
+                      ? `Page ${prospectPage} · showing ${visibleRows.length} of up to 100 records`
+                      : `Showing ${visibleRows.length} of ${displayRows.length} records`}
                   </span>
                   <div>
                     <button

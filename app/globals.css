@@ -3021,6 +3021,29 @@ td button {
   gap: 6px;
   color: #4f6071;
 }
+
+.table-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid #dce3eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #40516a;
+}
+
+.table-filter select {
+  width: auto;
+  min-width: 112px;
+  padding: 0 24px 0 0;
+  border: 0;
+  background-color: transparent;
+  color: inherit;
+  font-size: 13px;
+  outline: none;
+}
 .section-table table {
   min-width: 760px;
 }
