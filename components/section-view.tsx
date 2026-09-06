@@ -290,6 +290,9 @@ const content: Record<
   },
 };
 export default function SectionView({ section }: { section: string }) {
+  const usesLiveTable = ['campaigns', 'prospects', 'email-accounts'].includes(
+    section,
+  );
   const [session, setSession] = useState({
     name: 'Workspace member',
     email: '',
@@ -308,10 +311,13 @@ export default function SectionView({ section }: { section: string }) {
   const [prospectHasNext, setProspectHasNext] = useState(false);
   const [prospectLoading, setProspectLoading] = useState(false);
   const [prospectRefresh, setProspectRefresh] = useState(0);
+  const [dataLoading, setDataLoading] = useState(usesLiveTable);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const page = content[section] ?? content.prospects;
-  const [displayRows, setDisplayRows] = useState(page.rows);
+  const [displayRows, setDisplayRows] = useState(
+    usesLiveTable ? [] : page.rows,
+  );
   useEffect(() => {
     void fetch('/api/session').then(async (response) => {
       if (!response.ok) return;
@@ -329,32 +335,34 @@ export default function SectionView({ section }: { section: string }) {
   }, []);
   useEffect(() => {
     if (section !== 'campaigns') return;
-    void fetch('/api/dashboard').then(async (response) => {
-      if (!response.ok) return;
-      const data = (await response.json()) as {
-        campaigns: Array<{
-          id: string;
-          name: string;
-          status: string;
-          contacted: number;
-          sent: number;
-          replies: number;
-        }>;
-      };
-      if (!data.campaigns.length) return;
-      const format = new Intl.NumberFormat();
-      setCampaignIds(data.campaigns.map((campaign) => campaign.id));
-      setDisplayRows(
-        data.campaigns.map((campaign) => [
-          campaign.name,
-          campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1),
-          format.format(campaign.contacted),
-          format.format(campaign.sent),
-          format.format(campaign.replies),
-          '—',
-        ]),
-      );
-    });
+    void fetch('/api/dashboard')
+      .then(async (response) => {
+        if (!response.ok) throw new Error('LOAD_FAILED');
+        const data = (await response.json()) as {
+          campaigns: Array<{
+            id: string;
+            name: string;
+            status: string;
+            contacted: number;
+            sent: number;
+            replies: number;
+          }>;
+        };
+        const format = new Intl.NumberFormat();
+        setCampaignIds(data.campaigns.map((campaign) => campaign.id));
+        setDisplayRows(
+          data.campaigns.map((campaign) => [
+            campaign.name,
+            campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1),
+            format.format(campaign.contacted),
+            format.format(campaign.sent),
+            format.format(campaign.replies),
+            '—',
+          ]),
+        );
+      })
+      .catch(() => setDisplayRows([]))
+      .finally(() => setDataLoading(false));
   }, [section]);
   useEffect(() => {
     if (section !== 'prospects') return;
@@ -385,7 +393,11 @@ export default function SectionView({ section }: { section: string }) {
           ]),
         );
       })
-      .finally(() => setProspectLoading(false));
+      .catch(() => setDisplayRows([]))
+      .finally(() => {
+        setProspectLoading(false);
+        setDataLoading(false);
+      });
   }, [section, prospectPage, prospectRefresh]);
   useEffect(() => {
     if (section !== 'replies') return;
@@ -432,19 +444,19 @@ export default function SectionView({ section }: { section: string }) {
   }, [section]);
   useEffect(() => {
     if (section !== 'email-accounts') return;
-    void fetch('/api/email-accounts').then(async (response) => {
-      if (!response.ok) return;
-      const data = (await response.json()) as {
-        accounts: Array<{
-          email: string;
-          domain: string;
-          status: string;
-          dailyLimit: number | null;
-          sentToday: number;
-          health: string;
-        }>;
-      };
-      if (data.accounts.length)
+    void fetch('/api/email-accounts')
+      .then(async (response) => {
+        if (!response.ok) throw new Error('LOAD_FAILED');
+        const data = (await response.json()) as {
+          accounts: Array<{
+            email: string;
+            domain: string;
+            status: string;
+            dailyLimit: number | null;
+            sentToday: number;
+            health: string;
+          }>;
+        };
         setDisplayRows(
           data.accounts.map((account) => [
             account.email,
@@ -455,7 +467,9 @@ export default function SectionView({ section }: { section: string }) {
             account.health === 'pending' ? 'Pending' : account.health,
           ]),
         );
-    });
+      })
+      .catch(() => setDisplayRows([]))
+      .finally(() => setDataLoading(false));
   }, [section]);
   const filterOptions = useMemo(() => {
     const filterColumn = page.headers.findIndex((header) =>
@@ -602,7 +616,26 @@ export default function SectionView({ section }: { section: string }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleRows.map(({ row, originalIndex }) => (
+                      {dataLoading || prospectLoading ? (
+                        <tr>
+                          <td colSpan={page.headers.length}>
+                            <div className="table-loading" role="status">
+                              <span /> Loading current data…
+                            </div>
+                          </td>
+                        </tr>
+                      ) : visibleRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={page.headers.length}>
+                            <div className="table-empty">
+                              {searchTerm || statusFilter !== 'all'
+                                ? 'No matching records found.'
+                                : `No ${page.title.toLowerCase()} available yet.`}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        visibleRows.map(({ row, originalIndex }) => (
                         <tr
                           key={originalIndex}
                           className={
@@ -631,7 +664,8 @@ export default function SectionView({ section }: { section: string }) {
                             <td key={j}>{j === 0 ? <b>{cell}</b> : cell}</td>
                           ))}
                         </tr>
-                      ))}
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

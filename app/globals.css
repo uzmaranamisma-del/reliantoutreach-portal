@@ -3051,6 +3051,32 @@ td button {
   font-size: 12px;
   padding: 16px;
 }
+
+.table-loading,
+.table-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  color: #718096;
+  font-size: 14px;
+}
+
+.table-loading span {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d7e0ea;
+  border-top-color: #087d72;
+  border-radius: 50%;
+  animation: table-spin 0.75s linear infinite;
+}
+
+@keyframes table-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .table-footer {
   display: flex;
   justify-content: space-between;
