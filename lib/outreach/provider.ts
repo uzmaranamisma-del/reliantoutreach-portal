@@ -188,6 +188,36 @@ export class OutreachProvider {
     return (await response.json()) as T;
   }
 
+  private async patch<T>(
+    path: string,
+    body: Record<string, unknown>,
+  ): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'PATCH',
+      headers: {
+        'X-API-Key': this.apiKey,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!response.ok) {
+      const code =
+        response.status === 401 || response.status === 406
+          ? 'AUTHENTICATION_FAILED'
+          : response.status === 429
+            ? 'RATE_LIMITED'
+            : 'UPDATE_FAILED';
+      throw new Error(code);
+    }
+    return (await response.json()) as T;
+  }
+
+  async updateCampaign(campaignId: number, fields: Record<string, unknown>) {
+    return this.patch<ProviderCampaign>(`/campaigns/${campaignId}`, fields);
+  }
+
   async getCampaigns() {
     const page = await this.get<Page<ProviderCampaign>>(
       '/campaigns?pageQuery.page=1&pageQuery.limit=1000&pageQuery.includeArchived=false',

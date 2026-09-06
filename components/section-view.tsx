@@ -115,7 +115,14 @@ const content: Record<
   replies: {
     title: 'Replies',
     subtitle: 'Review conversations and classify buying intent.',
-    headers: ['Prospect', 'Company', 'Campaign', 'Classification', 'Received'],
+    headers: [
+      'Prospect',
+      'Email',
+      'Campaign',
+      'Message',
+      'Classification',
+      'Received',
+    ],
     rows: [
       [
         'Maya Chen',
@@ -389,6 +396,7 @@ export default function SectionView({ section }: { section: string }) {
           campaignName: string | null;
           classification: string | null;
           providerClassification: string | null;
+          body: string;
           receivedAt: string;
         }>;
       };
@@ -409,6 +417,9 @@ export default function SectionView({ section }: { section: string }) {
             name,
             reply.prospectEmail,
             reply.campaignName || 'Unassigned',
+            reply.body.length > 110
+              ? `${reply.body.slice(0, 110)}…`
+              : reply.body,
             status,
             new Date(reply.receivedAt).toLocaleString(),
           ];
@@ -639,13 +650,13 @@ export default function SectionView({ section }: { section: string }) {
     </main>
   );
 }
-type SessionSummary = {
+export type SessionSummary = {
   name: string;
   email: string;
   workspaceName: string;
   role: string;
 };
-function Aside({
+export function Aside({
   active,
   open,
   session,
@@ -693,7 +704,7 @@ function Aside({
     </aside>
   );
 }
-function Header({
+export function Header({
   open,
   setOpen,
   session,

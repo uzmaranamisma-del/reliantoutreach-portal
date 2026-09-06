@@ -151,7 +151,8 @@
   padding: clamp(24px, 4vw, 50px);
   background: #fff;
 }
-.email-preview label,.email-preview .field-label {
+.email-preview label,
+.email-preview .field-label {
   display: block;
   color: #5c6d7b;
   font-weight: 700;
@@ -474,6 +475,58 @@
 }
 .reply-meta b {
   color: #24394b;
+}
+.campaign-editor .editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.campaign-editor label {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  color: #5f7180;
+  font-weight: 650;
+}
+.campaign-editor input,
+.campaign-editor textarea {
+  width: 100%;
+  border: 1px solid #dce4e8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #24394b;
+}
+.campaign-editor textarea {
+  min-height: 170px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.campaign-editor input:disabled,
+.campaign-editor textarea:disabled {
+  background: #f5f7f8;
+  color: #687985;
+}
+.editor-grid,
+.editor-checks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.editor-checks label {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+.editor-checks input {
+  width: auto;
+}
+.save-message {
+  padding: 9px 11px;
+  background: #eaf5f2;
+  color: #176d66;
+  border-radius: 6px;
 }
 @media (max-width: 1050px) {
   .report-metrics {
