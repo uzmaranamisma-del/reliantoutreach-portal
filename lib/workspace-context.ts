@@ -1,7 +1,12 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
-import { users, workspaceMembers, workspaces } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import {
+  users,
+  workspaceInvitations,
+  workspaceMembers,
+  workspaces,
+} from '@/db/schema';
+import { and, eq, gt } from 'drizzle-orm';
 
 export async function getWorkspaceContext() {
   const auth = await getChatGPTUser();
@@ -45,6 +50,51 @@ export async function getWorkspaceContext() {
       ),
     )
     .limit(1);
+
+  if (!membership) {
+    const [invitation] = await db
+      .select()
+      .from(workspaceInvitations)
+      .where(
+        and(
+          eq(workspaceInvitations.email, auth.email.toLowerCase()),
+          eq(workspaceInvitations.status, 'pending'),
+          gt(workspaceInvitations.expiresAt, now),
+        ),
+      )
+      .limit(1);
+    if (invitation) {
+      await db.insert(workspaceMembers).values({
+        id: crypto.randomUUID(),
+        workspaceId: invitation.workspaceId,
+        userId,
+        role: invitation.role,
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      });
+      await db
+        .update(workspaceInvitations)
+        .set({ status: 'accepted', acceptedAt: now, updatedAt: now })
+        .where(eq(workspaceInvitations.id, invitation.id));
+      const [invitedMembership] = await db
+        .select({
+          workspaceId: workspaceMembers.workspaceId,
+          workspaceName: workspaces.name,
+          role: workspaceMembers.role,
+        })
+        .from(workspaceMembers)
+        .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
+        .where(
+          and(
+            eq(workspaceMembers.userId, userId),
+            eq(workspaceMembers.workspaceId, invitation.workspaceId),
+          ),
+        )
+        .limit(1);
+      membership = invitedMembership;
+    }
+  }
 
   if (!membership) {
     const workspaceId = `workspace:${auth.userId}`;

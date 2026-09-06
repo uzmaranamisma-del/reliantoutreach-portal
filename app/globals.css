@@ -3077,6 +3077,111 @@ td button {
     transform: rotate(360deg);
   }
 }
+
+.team-manager {
+  display: grid;
+  gap: 16px;
+}
+
+.team-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.team-actions h2,
+.team-actions p {
+  margin: 0;
+}
+
+.team-actions h2 {
+  font-size: 18px;
+}
+
+.team-actions p {
+  margin-top: 4px;
+  color: #718096;
+  font-size: 14px;
+}
+
+.team-message,
+.invite-note {
+  padding: 11px 13px;
+  border: 1px solid #cce6e1;
+  border-radius: 8px;
+  background: #effaf7;
+  color: #176b62;
+  font-size: 13px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(16 29 45 / 48%);
+}
+
+.invite-dialog {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  width: min(460px, 100%);
+  padding: 26px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(15 31 48 / 24%);
+}
+
+.invite-dialog h2,
+.invite-dialog p {
+  margin: 0;
+}
+
+.invite-dialog p {
+  color: #718096;
+  font-size: 14px;
+}
+
+.invite-dialog label {
+  display: grid;
+  gap: 7px;
+  color: #33445d;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.invite-dialog input,
+.invite-dialog select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #d7e0e9;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.invite-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+@media (max-width: 640px) {
+  .team-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
 .table-footer {
   display: flex;
   justify-content: space-between;

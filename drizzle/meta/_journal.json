@@ -43,6 +43,13 @@
       "when": 1788638607153,
       "tag": "0005_skinny_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788702092273,
+      "tag": "0006_sour_black_widow",
+      "breakpoints": true
     }
   ]
 }

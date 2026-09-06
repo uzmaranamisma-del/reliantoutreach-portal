@@ -32,6 +32,7 @@ import {
 } from '@/components/email-account-manager';
 import IntegrationSettings from '@/components/integration-settings';
 import DomainDashboard from '@/components/domain-dashboard';
+import TeamManager from '@/components/team-manager';
 const nav = [
   [LayoutDashboard, 'Dashboard', 'dashboard'],
   [Users, 'Prospects', 'prospects'],
@@ -534,7 +535,7 @@ export default function SectionView({ section }: { section: string }) {
               <h1>{page.title}</h1>
               <span>{page.subtitle}</span>
             </div>
-            {page.action && (
+            {page.action && section !== 'team' && (
               <div className="section-actions">
                 {(section === 'domains' || section === 'email-accounts') && (
                   <button
@@ -566,7 +567,9 @@ export default function SectionView({ section }: { section: string }) {
               </div>
             )}
           </div>
-          {section === 'settings' ? (
+          {section === 'team' ? (
+            <TeamManager />
+          ) : section === 'settings' ? (
             <IntegrationSettings />
           ) : section === 'domains' ? (
             <DomainDashboard refreshKey={domainRefresh} />
@@ -636,34 +639,34 @@ export default function SectionView({ section }: { section: string }) {
                         </tr>
                       ) : (
                         visibleRows.map(({ row, originalIndex }) => (
-                        <tr
-                          key={originalIndex}
-                          className={
-                            section === 'campaigns' ? 'clickable-row' : ''
-                          }
-                          tabIndex={section === 'campaigns' ? 0 : undefined}
-                          onClick={() => {
-                            if (
-                              section === 'campaigns' &&
-                              campaignIds[originalIndex]
-                            )
-                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[originalIndex])}`;
-                          }}
-                          onKeyDown={(event) => {
-                            if (
-                              section === 'campaigns' &&
-                              campaignIds[originalIndex] &&
-                              (event.key === 'Enter' || event.key === ' ')
-                            ) {
-                              event.preventDefault();
-                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[originalIndex])}`;
+                          <tr
+                            key={originalIndex}
+                            className={
+                              section === 'campaigns' ? 'clickable-row' : ''
                             }
-                          }}
-                        >
-                          {row.map((cell, j) => (
-                            <td key={j}>{j === 0 ? <b>{cell}</b> : cell}</td>
-                          ))}
-                        </tr>
+                            tabIndex={section === 'campaigns' ? 0 : undefined}
+                            onClick={() => {
+                              if (
+                                section === 'campaigns' &&
+                                campaignIds[originalIndex]
+                              )
+                                window.location.href = `/campaigns/${encodeURIComponent(campaignIds[originalIndex])}`;
+                            }}
+                            onKeyDown={(event) => {
+                              if (
+                                section === 'campaigns' &&
+                                campaignIds[originalIndex] &&
+                                (event.key === 'Enter' || event.key === ' ')
+                              ) {
+                                event.preventDefault();
+                                window.location.href = `/campaigns/${encodeURIComponent(campaignIds[originalIndex])}`;
+                              }
+                            }}
+                          >
+                            {row.map((cell, j) => (
+                              <td key={j}>{j === 0 ? <b>{cell}</b> : cell}</td>
+                            ))}
+                          </tr>
                         ))
                       )}
                     </tbody>

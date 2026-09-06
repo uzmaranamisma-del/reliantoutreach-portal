@@ -47,6 +47,27 @@ export const workspaceMembers = sqliteTable(
     index('membership_user').on(t.userId),
   ],
 );
+export const workspaceInvitations = sqliteTable(
+  'workspace_invitations',
+  {
+    id: id(),
+    workspaceId: wid().references(() => workspaces.id),
+    email: text('email').notNull(),
+    role: text('role', { enum: ['client_admin', 'client_viewer'] }).notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    status: text('status').notNull().default('pending'),
+    invitedByUserId: text('invited_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+    acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
+    ...times,
+  },
+  (t) => [
+    index('invitation_workspace').on(t.workspaceId, t.status),
+    index('invitation_email').on(t.email, t.status),
+  ],
+);
 export const companies = sqliteTable(
   'companies',
   {
