@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react';
 import CsvImport from '@/components/csv-import';
 import AddDomain from '@/components/add-domain';
 import DomainImport from '@/components/domain-import';
+import ReplyCenter from '@/components/reply-center';
 import {
   AddEmailAccount,
   ImportEmailAccounts,
@@ -509,6 +510,8 @@ export default function SectionView({ section }: { section: string }) {
             <IntegrationSettings />
           ) : section === 'domains' ? (
             <DomainDashboard refreshKey={domainRefresh} />
+          ) : section === 'replies' ? (
+            <ReplyCenter />
           ) : (
             <>
               <div className="toolbar">
