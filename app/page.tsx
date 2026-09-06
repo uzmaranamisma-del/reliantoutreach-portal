@@ -795,7 +795,7 @@ export default function Dashboard() {
                       tabIndex={campaignIds[rowIndex] ? 0 : undefined}
                       onClick={() => {
                         if (campaignIds[rowIndex])
-                          window.location.href = `/dashboard?campaign=${encodeURIComponent(campaignIds[rowIndex])}`;
+                          window.location.href = `/campaigns/${encodeURIComponent(campaignIds[rowIndex])}`;
                       }}
                       onKeyDown={(event) => {
                         if (
@@ -803,7 +803,7 @@ export default function Dashboard() {
                           (event.key === 'Enter' || event.key === ' ')
                         ) {
                           event.preventDefault();
-                          window.location.href = `/dashboard?campaign=${encodeURIComponent(campaignIds[rowIndex])}`;
+                          window.location.href = `/campaigns/${encodeURIComponent(campaignIds[rowIndex])}`;
                         }
                       }}
                     >

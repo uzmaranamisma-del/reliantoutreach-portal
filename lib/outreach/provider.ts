@@ -13,6 +13,33 @@ export type ProviderCampaign = {
   subject?: string | null;
   body?: string | null;
   textOnlyEmails?: boolean | null;
+  fromEmails?: string[] | null;
+  fromName?: string | null;
+  replyToEmail?: string | null;
+  tags?: Array<{ name?: string | null }> | string[] | null;
+  prospectValue?: number | null;
+  trackOpens?: boolean | null;
+  trackClicks?: boolean | null;
+  sendUnsubscribeListHeader?: boolean | null;
+  deactivateIfMissingPlaceholder?: boolean | null;
+  stopCoworkersOnReply?: boolean | null;
+  useProspectsTimeZone?: boolean | null;
+  dailyLimitIncrease?: boolean | null;
+  dailyLimitIncreaseToMax?: number | null;
+  dailyLimitIncreasePercent?: number | null;
+  dailyLimitPrioritize?: string | null;
+  dailyLimitInitial?: number | null;
+  dailyLimitInitialEnabled?: boolean | null;
+  dailyLimitWhichEmailsCount?: string | null;
+  espMatchType?: string | null;
+  espMatchEnabled?: boolean | null;
+  espLimitEnabled?: boolean | null;
+  espLimitToMicrosoft?: number | null;
+  espLimitToGoogle?: number | null;
+  espLimitToOther?: number | null;
+  openCount?: number | null;
+  clickCount?: number | null;
+  conversionCount?: number | null;
   initialOpenCount?: number | null;
   initialClickCount?: number | null;
   initialReplyCount?: number | null;
@@ -45,6 +72,17 @@ export type ProviderCampaign = {
   sendSun?: boolean | null;
   sendSunAfter?: number | null;
   sendSunBefore?: number | null;
+};
+export type ProviderCampaignStats = {
+  campaignId: number;
+  timeline?: string[];
+  sentSeries?: { data?: number[] } | number[];
+  sentInitialSeries?: { data?: number[] } | number[];
+  opensSeries?: { data?: number[] } | number[];
+  clicksSeries?: { data?: number[] } | number[];
+  replySeries?: { data?: number[] } | number[];
+  unspamSeries?: { data?: number[] } | number[];
+  followupStats?: unknown[];
 };
 export type ProviderSender = {
   senderId: number;
@@ -226,5 +264,9 @@ export class OutreachProvider {
       result.push({ sequence, followups });
     }
     return result;
+  }
+
+  async getCampaignStats(campaignId: number) {
+    return this.get<ProviderCampaignStats>(`/campaigns/${campaignId}/stats`);
   }
 }

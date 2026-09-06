@@ -535,7 +535,7 @@ export default function SectionView({ section }: { section: string }) {
                           tabIndex={section === 'campaigns' ? 0 : undefined}
                           onClick={() => {
                             if (section === 'campaigns' && campaignIds[i])
-                              window.location.href = `/dashboard?campaign=${encodeURIComponent(campaignIds[i])}`;
+                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[i])}`;
                           }}
                           onKeyDown={(event) => {
                             if (
@@ -544,7 +544,7 @@ export default function SectionView({ section }: { section: string }) {
                               (event.key === 'Enter' || event.key === ' ')
                             ) {
                               event.preventDefault();
-                              window.location.href = `/dashboard?campaign=${encodeURIComponent(campaignIds[i])}`;
+                              window.location.href = `/campaigns/${encodeURIComponent(campaignIds[i])}`;
                             }
                           }}
                         >

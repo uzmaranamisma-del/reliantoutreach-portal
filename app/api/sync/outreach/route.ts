@@ -116,11 +116,26 @@ export async function POST() {
         branches: await provider.getCampaignSequence(campaign.campaignId),
       })),
     );
+    const statsResults = await Promise.allSettled(
+      remoteCampaigns.slice(0, 50).map(async (campaign) => ({
+        campaignId: campaign.campaignId,
+        stats: await provider.getCampaignStats(campaign.campaignId),
+      })),
+    );
+    const statsByCampaign = new Map(
+      statsResults.flatMap((result) =>
+        result.status === 'fulfilled'
+          ? [[result.value.campaignId, result.value.stats] as const]
+          : [],
+      ),
+    );
     const remoteSequences = sequenceResults.flatMap((result) =>
       result.status === 'fulfilled' ? [result.value] : [],
     );
     if (sequenceResults.some((result) => result.status === 'rejected'))
       warnings.push('sequences_partially_unavailable');
+    if (statsResults.some((result) => result.status === 'rejected'))
+      warnings.push('reports_partially_unavailable');
     const synchronizedCampaignIds = new Set(
       remoteCampaigns.map((campaign) => campaign.campaignId),
     );
@@ -134,6 +149,18 @@ export async function POST() {
       const sent = Math.max(0, item.sentCount ?? 0);
       const bounced = Math.max(0, item.bounceCount ?? 0);
       const campaignSettings = {
+        campaign: {
+          createdAt: item.createdAt ?? null,
+          tags: (item.tags ?? [])
+            .map((tag) => (typeof tag === 'string' ? tag : tag.name))
+            .filter(Boolean),
+          prospectValue: item.prospectValue ?? null,
+        },
+        senders: {
+          emails: item.fromEmails ?? [],
+          fromName: item.fromName ?? null,
+          replyToEmail: item.replyToEmail ?? null,
+        },
         initialEmail: {
           subject: item.subject ?? null,
           body: item.body ?? null,
@@ -146,10 +173,44 @@ export async function POST() {
         },
         dailyLimit: item.dailyLimit ?? null,
         dailyLimitPer: item.dailyLimitPer ?? null,
+        dailyLimitIncrease: item.dailyLimitIncrease ?? null,
+        dailyLimitIncreaseToMax: item.dailyLimitIncreaseToMax ?? null,
+        dailyLimitIncreasePercent: item.dailyLimitIncreasePercent ?? null,
+        dailyLimitPrioritize: item.dailyLimitPrioritize ?? null,
+        dailyLimitInitial: item.dailyLimitInitial ?? null,
+        dailyLimitInitialEnabled: item.dailyLimitInitialEnabled ?? null,
+        dailyLimitWhichEmailsCount: item.dailyLimitWhichEmailsCount ?? null,
         scheduleSending: item.scheduleSending ?? null,
         scheduleTimeZone: item.scheduleTimeZone ?? null,
         delayMinMinutes: item.delayMinMinutes ?? null,
         delayMinSeconds: item.delayMinSeconds ?? null,
+        tracking: {
+          opens: item.trackOpens ?? null,
+          clicks: item.trackClicks ?? null,
+          textOnly: item.textOnlyEmails ?? null,
+        },
+        advanced: {
+          unsubscribeHeader: item.sendUnsubscribeListHeader ?? null,
+          deactivateMissingPlaceholder:
+            item.deactivateIfMissingPlaceholder ?? null,
+          stopCoworkersOnReply: item.stopCoworkersOnReply ?? null,
+          useProspectTimezone: item.useProspectsTimeZone ?? null,
+          espMatchType: item.espMatchType ?? null,
+          espMatchEnabled: item.espMatchEnabled ?? null,
+          espLimitEnabled: item.espLimitEnabled ?? null,
+          espLimits: {
+            microsoft: item.espLimitToMicrosoft ?? null,
+            google: item.espLimitToGoogle ?? null,
+            other: item.espLimitToOther ?? null,
+          },
+        },
+        totals: {
+          opens: item.openCount ?? 0,
+          clicks: item.clickCount ?? 0,
+          bounced: item.bounceCount ?? 0,
+          conversions: item.conversionCount ?? 0,
+        },
+        report: statsByCampaign.get(item.campaignId) ?? null,
         days: [
           ['Monday', item.sendMon, item.sendMonAfter, item.sendMonBefore],
           ['Tuesday', item.sendTue, item.sendTueAfter, item.sendTueBefore],
