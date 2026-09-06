@@ -41,10 +41,11 @@ const prospectStatusMap: Record<string, string> = {
   AutoReply: 'replied',
 };
 
-export async function POST() {
+export async function POST(request: Request) {
   const context = await getWorkspaceContext();
   if (!context) return json({ error: 'Authentication required' }, 401);
   const { db, workspaceId } = context;
+  const quick = new URL(request.url).searchParams.get('mode') === 'quick';
   const now = new Date();
   const jobId = crypto.randomUUID();
   const [latestJob] = await db
@@ -98,10 +99,15 @@ export async function POST() {
       provider.getCampaigns(),
       provider.getSenders(),
     ]);
-    const optionalResults = await Promise.allSettled([
-      provider.getProspects(),
-      provider.getMessages(),
-    ]);
+    const optionalResults = quick
+      ? ([
+          { status: 'fulfilled', value: [] },
+          { status: 'fulfilled', value: [] },
+        ] as const)
+      : await Promise.allSettled([
+          provider.getProspects(),
+          provider.getMessages(),
+        ]);
     const remoteProspects =
       optionalResults[0].status === 'fulfilled' ? optionalResults[0].value : [];
     const remoteMessages =
@@ -110,18 +116,22 @@ export async function POST() {
       optionalResults[0].status === 'rejected' ? 'prospects_unavailable' : null,
       optionalResults[1].status === 'rejected' ? 'messages_unavailable' : null,
     ].filter(Boolean);
-    const sequenceResults = await Promise.allSettled(
-      remoteCampaigns.slice(0, 50).map(async (campaign) => ({
-        campaignId: campaign.campaignId,
-        branches: await provider.getCampaignSequence(campaign.campaignId),
-      })),
-    );
-    const statsResults = await Promise.allSettled(
-      remoteCampaigns.slice(0, 50).map(async (campaign) => ({
-        campaignId: campaign.campaignId,
-        stats: await provider.getCampaignStats(campaign.campaignId),
-      })),
-    );
+    const sequenceResults = quick
+      ? []
+      : await Promise.allSettled(
+          remoteCampaigns.slice(0, 50).map(async (campaign) => ({
+            campaignId: campaign.campaignId,
+            branches: await provider.getCampaignSequence(campaign.campaignId),
+          })),
+        );
+    const statsResults = quick
+      ? []
+      : await Promise.allSettled(
+          remoteCampaigns.slice(0, 50).map(async (campaign) => ({
+            campaignId: campaign.campaignId,
+            stats: await provider.getCampaignStats(campaign.campaignId),
+          })),
+        );
     const statsByCampaign = new Map(
       statsResults.flatMap((result) =>
         result.status === 'fulfilled'
@@ -146,9 +156,23 @@ export async function POST() {
         `campaign:${item.campaignId}`,
       );
       const externalIdCiphertext = await encryptSecret(String(item.campaignId));
+      const [existingCampaign] = quick
+        ? await db
+            .select({ settings: campaigns.settings })
+            .from(campaigns)
+            .where(
+              and(eq(campaigns.id, id), eq(campaigns.workspaceId, workspaceId)),
+            )
+            .limit(1)
+        : [];
+      const previousSettings = (existingCampaign?.settings ?? {}) as Record<
+        string,
+        unknown
+      >;
       const sent = Math.max(0, item.sentCount ?? 0);
       const bounced = Math.max(0, item.bounceCount ?? 0);
       const campaignSettings = {
+        ...previousSettings,
         campaign: {
           createdAt: item.createdAt ?? null,
           tags: (item.tags ?? [])
@@ -210,7 +234,9 @@ export async function POST() {
           bounced: item.bounceCount ?? 0,
           conversions: item.conversionCount ?? 0,
         },
-        report: statsByCampaign.get(item.campaignId) ?? null,
+        report: quick
+          ? (previousSettings.report ?? null)
+          : (statsByCampaign.get(item.campaignId) ?? null),
         days: [
           ['Monday', item.sendMon, item.sendMonAfter, item.sendMonBefore],
           ['Tuesday', item.sendTue, item.sendTueAfter, item.sendTueBefore],
@@ -616,6 +642,7 @@ export async function POST() {
       .where(eq(syncJobs.id, jobId));
     return json({
       status: 'complete',
+      mode: quick ? 'quick' : 'full',
       campaigns: remoteCampaigns.length,
       emailAccounts: remoteSenders.length,
       prospects: remoteProspects.length,

@@ -49,12 +49,15 @@ export default function IntegrationSettings() {
       setSaving(false);
     }
   }
-  async function syncNow() {
+  async function syncNow(mode: 'quick' | 'full') {
     setSyncing(true);
     setError('');
     setSyncResult('');
     try {
-      const response = await fetch('/api/sync/outreach', { method: 'POST' });
+      const response = await fetch(
+        `/api/sync/outreach${mode === 'quick' ? '?mode=quick' : ''}`,
+        { method: 'POST' },
+      );
       const data = (await response.json()) as {
         error?: string;
         campaigns?: number;
@@ -67,7 +70,10 @@ export default function IntegrationSettings() {
         setError(data.error || 'Data could not be synchronized.');
         return;
       }
-      const summary = `${data.campaigns ?? 0} campaigns, ${data.emailAccounts ?? 0} email accounts, ${data.prospects ?? 0} prospects and ${data.messages ?? 0} messages synchronized.`;
+      const summary =
+        mode === 'quick'
+          ? `${data.campaigns ?? 0} campaigns and ${data.emailAccounts ?? 0} email accounts refreshed.`
+          : `${data.campaigns ?? 0} campaigns, ${data.emailAccounts ?? 0} email accounts, ${data.prospects ?? 0} prospects and ${data.messages ?? 0} messages synchronized.`;
       setSyncResult(
         data.warnings?.length
           ? `${summary} Some additional records are temporarily unavailable; run sync again shortly.`
@@ -146,11 +152,21 @@ export default function IntegrationSettings() {
             {connection && (
               <button
                 type="button"
+                className="primary-action"
+                disabled={syncing}
+                onClick={() => void syncNow('quick')}
+              >
+                {syncing ? 'Refreshing…' : 'Quick sync'}
+              </button>
+            )}
+            {connection && (
+              <button
+                type="button"
                 className="secondary-action"
                 disabled={syncing}
-                onClick={() => void syncNow()}
+                onClick={() => void syncNow('full')}
               >
-                {syncing ? 'Synchronizing…' : 'Sync now'}
+                {syncing ? 'Synchronizing…' : 'Full sync'}
               </button>
             )}
           </div>
