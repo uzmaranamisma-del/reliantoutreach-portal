@@ -1,6 +1,5 @@
-import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { getDb } from '@/db';
-import { prospects, users, workspaceMembers, workspaces } from '@/db/schema';
+import { prospects } from '@/db/schema';
+import { getWorkspaceContext } from '@/lib/workspace-context';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 
 type ImportRow = {
@@ -12,47 +11,7 @@ type ImportRow = {
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 async function context() {
-  const auth = await getChatGPTUser();
-  if (!auth) return null;
-  const db = getDb(),
-    now = new Date(),
-    userId = `user:${auth.userId}`,
-    workspaceId = `workspace:${auth.userId}`;
-  await db
-    .insert(users)
-    .values({
-      id: userId,
-      authSubject: auth.userId,
-      email: auth.email,
-      name: auth.fullName,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing();
-  await db
-    .insert(workspaces)
-    .values({
-      id: workspaceId,
-      name: 'Acme Automation',
-      slug: `workspace-${auth.userId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 24)}`,
-      status: 'active',
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing();
-  await db
-    .insert(workspaceMembers)
-    .values({
-      id: `member:${auth.userId}`,
-      workspaceId,
-      userId,
-      role: 'client_admin',
-      status: 'active',
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing();
-  return { db, workspaceId };
+  return getWorkspaceContext();
 }
 export async function GET(request: Request) {
   const ctx = await context();

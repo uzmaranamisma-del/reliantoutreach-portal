@@ -1,6 +1,6 @@
-import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
 import { campaigns, prospects, replies } from '@/db/schema';
+import { getWorkspaceContext } from '@/lib/workspace-context';
 import { and, desc, eq } from 'drizzle-orm';
 
 const allowedClassifications = new Set([
@@ -20,9 +20,9 @@ const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 export async function GET() {
-  const auth = await getChatGPTUser();
-  if (!auth) return json({ error: 'Authentication required' }, 401);
-  const workspaceId = `workspace:${auth.userId}`;
+  const context = await getWorkspaceContext();
+  if (!context) return json({ error: 'Authentication required' }, 401);
+  const { workspaceId } = context;
   const rows = await getDb()
     .select({
       id: replies.id,
@@ -54,8 +54,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await getChatGPTUser();
-  if (!auth) return json({ error: 'Authentication required' }, 401);
+  const context = await getWorkspaceContext();
+  if (!context) return json({ error: 'Authentication required' }, 401);
   let body: { id?: string; classification?: string };
   try {
     body = await request.json();
@@ -68,7 +68,7 @@ export async function PATCH(request: Request) {
     !allowedClassifications.has(body.classification)
   )
     return json({ error: 'Choose a valid classification' }, 400);
-  const workspaceId = `workspace:${auth.userId}`;
+  const { workspaceId } = context;
   const updated = await getDb()
     .update(replies)
     .set({ classification: body.classification, updatedAt: new Date() })

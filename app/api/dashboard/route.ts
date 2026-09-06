@@ -1,15 +1,13 @@
-import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { getDb } from '@/db';
 import { campaigns, campaignSteps, mailboxes } from '@/db/schema';
+import { getWorkspaceContext } from '@/lib/workspace-context';
 import { and, asc, eq } from 'drizzle-orm';
 
 export async function GET(request: Request) {
-  const auth = await getChatGPTUser();
-  if (!auth)
+  const context = await getWorkspaceContext();
+  if (!context)
     return Response.json({ error: 'Authentication required' }, { status: 401 });
-  const workspaceId = `workspace:${auth.userId}`;
+  const { workspaceId, db } = context;
   const requestedCampaignId = new URL(request.url).searchParams.get('campaign');
-  const db = getDb();
   const [campaignRows, mailboxRows] = await Promise.all([
     db
       .select()

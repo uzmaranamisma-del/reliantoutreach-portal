@@ -1,6 +1,5 @@
-import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { getDb } from '@/db';
 import { domains } from '@/db/schema';
+import { getWorkspaceContext } from '@/lib/workspace-context';
 import { eq } from 'drizzle-orm';
 
 type DnsAnswer = { data?: string };
@@ -21,10 +20,9 @@ async function lookup(name: string, type: 'TXT' | 'MX') {
 }
 
 export async function POST() {
-  const auth = await getChatGPTUser();
-  if (!auth) return json({ error: 'Authentication required' }, 401);
-  const workspaceId = `workspace:${auth.userId}`;
-  const db = getDb();
+  const context = await getWorkspaceContext();
+  if (!context) return json({ error: 'Authentication required' }, 401);
+  const { workspaceId, db } = context;
   const rows = await db
     .select()
     .from(domains)

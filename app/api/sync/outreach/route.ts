@@ -1,5 +1,3 @@
-import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { getDb } from '@/db';
 import {
   campaigns,
   campaignSteps,
@@ -13,6 +11,7 @@ import {
 } from '@/db/schema';
 import { decryptSecret, encryptSecret, stableExternalId } from '@/lib/crypto';
 import { OutreachProvider } from '@/lib/outreach/provider';
+import { getWorkspaceContext } from '@/lib/workspace-context';
 import { and, desc, eq } from 'drizzle-orm';
 
 const json = (body: unknown, status = 200) =>
@@ -43,10 +42,9 @@ const prospectStatusMap: Record<string, string> = {
 };
 
 export async function POST() {
-  const auth = await getChatGPTUser();
-  if (!auth) return json({ error: 'Authentication required' }, 401);
-  const db = getDb();
-  const workspaceId = `workspace:${auth.userId}`;
+  const context = await getWorkspaceContext();
+  if (!context) return json({ error: 'Authentication required' }, 401);
+  const { db, workspaceId } = context;
   const now = new Date();
   const jobId = crypto.randomUUID();
   const [latestJob] = await db

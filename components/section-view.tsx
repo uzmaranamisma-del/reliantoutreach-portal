@@ -282,6 +282,12 @@ const content: Record<
   },
 };
 export default function SectionView({ section }: { section: string }) {
+  const [session, setSession] = useState({
+    name: 'Workspace member',
+    email: '',
+    workspaceName: 'Your Workspace',
+    role: 'client_viewer',
+  });
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [domainOpen, setDomainOpen] = useState(false);
@@ -296,6 +302,21 @@ export default function SectionView({ section }: { section: string }) {
   const [prospectRefresh, setProspectRefresh] = useState(0);
   const page = content[section] ?? content.prospects;
   const [displayRows, setDisplayRows] = useState(page.rows);
+  useEffect(() => {
+    void fetch('/api/session').then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        user: { name: string; email: string };
+        workspace: { name: string; role: string };
+      };
+      setSession({
+        name: data.user.name,
+        email: data.user.email,
+        workspaceName: data.workspace.name,
+        role: data.workspace.role,
+      });
+    });
+  }, []);
   useEffect(() => {
     if (section !== 'campaigns') return;
     void fetch('/api/dashboard').then(async (response) => {
@@ -424,7 +445,7 @@ export default function SectionView({ section }: { section: string }) {
   }, [section]);
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#142033]">
-      <Aside active={section} open={open} />
+      <Aside active={section} open={open} session={session} />
       {open && (
         <button
           className="scrim"
@@ -433,11 +454,11 @@ export default function SectionView({ section }: { section: string }) {
         />
       )}
       <section className="app-shell">
-        <Header open={open} setOpen={setOpen} />
+        <Header open={open} setOpen={setOpen} session={session} />
         <div className="content">
           <div className="section-heading">
             <div>
-              <p>ACME AUTOMATION</p>
+              <p>{session.workspaceName.toUpperCase()}</p>
               <h1>{page.title}</h1>
               <span>{page.subtitle}</span>
             </div>
@@ -618,7 +639,21 @@ export default function SectionView({ section }: { section: string }) {
     </main>
   );
 }
-function Aside({ active, open }: { active: string; open: boolean }) {
+type SessionSummary = {
+  name: string;
+  email: string;
+  workspaceName: string;
+  role: string;
+};
+function Aside({
+  active,
+  open,
+  session,
+}: {
+  active: string;
+  open: boolean;
+  session: SessionSummary;
+}) {
   return (
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <a href="/" className="brand">
@@ -631,8 +666,8 @@ function Aside({ active, open }: { active: string; open: boolean }) {
       <button className="workspace" aria-label="Switch workspace">
         <span className="workspace-logo">AA</span>
         <span>
-          <b>Acme Automation</b>
-          <small>Growth workspace</small>
+          <b>{session.workspaceName}</b>
+          <small>Private client workspace</small>
         </span>
         <ChevronDown size={15} />
       </button>
@@ -661,9 +696,11 @@ function Aside({ active, open }: { active: string; open: boolean }) {
 function Header({
   open,
   setOpen,
+  session,
 }: {
   open: boolean;
   setOpen: (v: boolean) => void;
+  session: SessionSummary;
 }) {
   return (
     <header className="topbar">
@@ -688,10 +725,17 @@ function Header({
           <i />
         </button>
         <span className="divider" />
-        <div className="avatar">FM</div>
+        <div className="avatar">
+          {session.name
+            .split(/\s+/)
+            .map((part) => part[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase()}
+        </div>
         <div className="user">
-          <b>Farhan Malik</b>
-          <small>Client Admin</small>
+          <b>{session.name}</b>
+          <small>{session.role.replaceAll('_', ' ')}</small>
         </div>
         <ChevronDown size={15} />
       </div>

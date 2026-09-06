@@ -57,6 +57,11 @@ const seedCampaigns = [
 ] as const;
 export default function Dashboard() {
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState({
+    name: 'Workspace member',
+    workspaceName: 'Your Workspace',
+    role: 'client_viewer',
+  });
   const [metrics, setMetrics] =
     useState<readonly (readonly string[])[]>(seedMetrics);
   const [campaigns, setCampaigns] =
@@ -109,6 +114,23 @@ export default function Dashboard() {
     }>
   >([]);
   const [selectedSequenceStep, setSelectedSequenceStep] = useState(0);
+  useEffect(() => {
+    void fetch('/api/session').then(async (response) => {
+      if (!response.ok) {
+        if (response.status === 401) window.location.href = '/login';
+        return;
+      }
+      const data = (await response.json()) as {
+        user: { name: string };
+        workspace: { name: string; role: string };
+      };
+      setSession({
+        name: data.user.name,
+        workspaceName: data.workspace.name,
+        role: data.workspace.role,
+      });
+    });
+  }, []);
   useEffect(() => {
     const campaignId = new URLSearchParams(window.location.search).get(
       'campaign',
@@ -306,8 +328,8 @@ export default function Dashboard() {
         <button className="workspace" aria-label="Switch workspace">
           <span className="workspace-logo">AA</span>
           <span>
-            <b>Acme Automation</b>
-            <small>Growth workspace</small>
+            <b>{session.workspaceName}</b>
+            <small>Private client workspace</small>
           </span>
           <ChevronDown size={15} />
         </button>
@@ -371,10 +393,17 @@ export default function Dashboard() {
               <i />
             </button>
             <span className="divider" />
-            <div className="avatar">FM</div>
+            <div className="avatar">
+              {session.name
+                .split(/\s+/)
+                .map((part) => part[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
             <div className="user">
-              <b>Farhan Malik</b>
-              <small>Client Admin</small>
+              <b>{session.name}</b>
+              <small>{session.role.replaceAll('_', ' ')}</small>
             </div>
             <ChevronDown size={15} />
           </div>
@@ -383,7 +412,7 @@ export default function Dashboard() {
           <div className="page-head">
             <div>
               <p>THURSDAY, SEPTEMBER 4</p>
-              <h1>Good afternoon, Farhan</h1>
+              <h1>Welcome, {session.name.split(' ')[0]}</h1>
               <span>
                 {selectedCampaign
                   ? `Showing live performance for ${selectedCampaign}.`

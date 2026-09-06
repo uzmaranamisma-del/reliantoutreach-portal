@@ -1,13 +1,11 @@
-import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { getDb } from '@/db';
 import { mailboxes } from '@/db/schema';
+import { getWorkspaceContext } from '@/lib/workspace-context';
 import { desc, eq } from 'drizzle-orm';
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 async function workspace() {
-  const auth = await getChatGPTUser();
-  return auth ? { db: getDb(), workspaceId: `workspace:${auth.userId}` } : null;
+  return getWorkspaceContext();
 }
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const normalize = (value: unknown) =>
