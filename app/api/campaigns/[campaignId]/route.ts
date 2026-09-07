@@ -148,7 +148,9 @@ export async function GET(
         waitUnit: step.waitUnit,
         subject: step.subject,
         body: clean(step.body),
-        settings: step.settings,
+        settings: step.settings && typeof step.settings === 'object'
+          ? Object.fromEntries(Object.entries(step.settings).filter(([key]) => key !== 'sequenceExternalIdCiphertext'))
+          : {},
       })),
       prospects: campaignProspects.slice(0, 500).map((prospect) => {
         const sent = campaignMessages.filter(
@@ -213,6 +215,13 @@ const editableFields = new Set([
   'sendUnsubscribeListHeader',
   'stopCoworkersOnReply',
   'useProspectsTimeZone',
+  'sendMon', 'sendMonAfter', 'sendMonBefore',
+  'sendTue', 'sendTueAfter', 'sendTueBefore',
+  'sendWed', 'sendWedAfter', 'sendWedBefore',
+  'sendThu', 'sendThuAfter', 'sendThuBefore',
+  'sendFri', 'sendFriAfter', 'sendFriBefore',
+  'sendSat', 'sendSatAfter', 'sendSatBefore',
+  'sendSun', 'sendSunAfter', 'sendSunBefore',
 ]);
 
 export async function PATCH(
@@ -343,6 +352,10 @@ export async function PATCH(
           fields.useProspectsTimeZone ??
           current.advanced?.useProspectTimezone,
       },
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+        const previous = Array.isArray(current.days) ? current.days[index] : null;
+        return [previous?.[0] ?? day, updated[`send${day}` as keyof typeof updated] ?? fields[`send${day}`] ?? previous?.[1] ?? false, updated[`send${day}After` as keyof typeof updated] ?? fields[`send${day}After`] ?? previous?.[2] ?? 540, updated[`send${day}Before` as keyof typeof updated] ?? fields[`send${day}Before`] ?? previous?.[3] ?? 1020];
+      }),
     };
     await context.db
       .update(campaigns)

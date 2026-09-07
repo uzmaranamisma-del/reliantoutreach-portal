@@ -341,6 +341,7 @@ export async function POST(request: Request) {
                 : (followup.subject ?? null),
               body: followup.body ?? null,
               settings: {
+                sequenceExternalIdCiphertext: await encryptSecret(String(branch.sequence.sequenceId)),
                 useOriginalSubject: followup.useOriginalSubject ?? false,
                 sendInSameThread: followup.sendInSameThread ?? false,
                 replyInThread: followup.replyInThread ?? false,
@@ -372,6 +373,7 @@ export async function POST(request: Request) {
                   : (followup.subject ?? null),
                 body: followup.body ?? null,
                 settings: {
+                  sequenceExternalIdCiphertext: await encryptSecret(String(branch.sequence.sequenceId)),
                   useOriginalSubject: followup.useOriginalSubject ?? false,
                   sendInSameThread: followup.sendInSameThread ?? false,
                   replyInThread: followup.replyInThread ?? false,

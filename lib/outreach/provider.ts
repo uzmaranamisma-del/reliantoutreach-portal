@@ -214,8 +214,40 @@ export class OutreachProvider {
     return (await response.json()) as T;
   }
 
+  private async post<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: { 'X-API-Key': this.apiKey, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!response.ok) throw new Error(response.status === 429 ? 'RATE_LIMITED' : 'UPDATE_FAILED');
+    return (await response.json()) as T;
+  }
+
+  private async remove(path: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'DELETE',
+      headers: { 'X-API-Key': this.apiKey, Accept: 'application/json' },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!response.ok) throw new Error(response.status === 429 ? 'RATE_LIMITED' : 'UPDATE_FAILED');
+  }
+
   async updateCampaign(campaignId: number, fields: Record<string, unknown>) {
     return this.patch<ProviderCampaign>(`/campaigns/${campaignId}`, fields);
+  }
+
+  async createFollowup(sequenceId: number, fields: Record<string, unknown>) {
+    return this.post<ProviderFollowup>(`/sequences/${sequenceId}/followups`, fields);
+  }
+
+  async updateFollowup(followupId: number, fields: Record<string, unknown>) {
+    return this.patch<ProviderFollowup>(`/followups/${followupId}`, fields);
+  }
+
+  async deleteFollowup(followupId: number) {
+    return this.remove(`/followups/${followupId}`);
   }
 
   async getCampaigns() {
