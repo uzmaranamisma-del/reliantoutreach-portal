@@ -51,7 +51,7 @@ export default function TeamManager() {
     });
     const result = (await response.json()) as { error?: string };
     if (response.ok) {
-      setMessage(`Invitation created for ${email}.`);
+      setMessage(`Invitation email sent to ${email}.`);
       setEmail('');
       setOpen(false);
       load();
@@ -156,7 +156,7 @@ export default function TeamManager() {
               disabled={saving || !email.trim()}
               onClick={invite}
             >
-              {saving ? 'Creating invitation…' : 'Create invitation'}
+              {saving ? 'Sending invitation…' : 'Send invitation email'}
             </button>
           </section>
         </div>

@@ -1,6 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldCheck } from 'lucide-react';
+import {
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Mail,
+  ShieldCheck,
+} from 'lucide-react';
 
 export default function IntegrationSettings() {
   const [apiKey, setApiKey] = useState('');
@@ -14,6 +21,14 @@ export default function IntegrationSettings() {
     lastFour: string | null;
     updatedAt: string;
   }>(null);
+  const [emailApiKey, setEmailApiKey] = useState('');
+  const [fromEmail, setFromEmail] = useState('info@reliantoutreach.com');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailConnection, setEmailConnection] = useState<null | {
+    status: string;
+    lastFour: string | null;
+  }>(null);
   useEffect(() => {
     void fetch('/api/integrations/outreach').then(async (response) => {
       if (response.ok)
@@ -23,6 +38,35 @@ export default function IntegrationSettings() {
         );
     });
   }, []);
+  useEffect(() => {
+    void fetch('/api/integrations/email').then(async (response) => {
+      if (response.ok)
+        setEmailConnection(
+          ((await response.json()) as { connection: typeof emailConnection })
+            .connection,
+        );
+    });
+  }, []);
+  async function saveEmail(event: React.SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setEmailSaving(true);
+    setEmailMessage('');
+    const response = await fetch('/api/integrations/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: emailApiKey, fromEmail }),
+    });
+    const result = (await response.json()) as {
+      error?: string;
+      connection?: NonNullable<typeof emailConnection>;
+    };
+    if (response.ok && result.connection) {
+      setEmailConnection(result.connection);
+      setEmailApiKey('');
+      setEmailMessage('Invitation email delivery is connected.');
+    } else setEmailMessage(result.error || 'Email setup could not be saved.');
+    setEmailSaving(false);
+  }
   async function submit(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -169,6 +213,68 @@ export default function IntegrationSettings() {
                 {syncing ? 'Synchronizing…' : 'Full sync'}
               </button>
             )}
+          </div>
+        </form>
+      </section>
+      <section className="integration-card email-integration-card">
+        <div className="integration-card-head">
+          <span>
+            <Mail />
+          </span>
+          <div>
+            <h2>Invitation email delivery</h2>
+            <p>Send branded client invitations from your verified email.</p>
+          </div>
+          {emailConnection && (
+            <em>
+              <CheckCircle2 /> Connected
+            </em>
+          )}
+        </div>
+        <form onSubmit={(event) => void saveEmail(event)}>
+          <label htmlFor="invitation-from">Verified sender email</label>
+          <input
+            id="invitation-from"
+            type="email"
+            value={fromEmail}
+            onChange={(event) => setFromEmail(event.target.value)}
+            placeholder="info@reliantoutreach.com"
+          />
+          <label htmlFor="email-api-key">Resend API key</label>
+          <div className="secret-input">
+            <input
+              id="email-api-key"
+              type="password"
+              value={emailApiKey}
+              onChange={(event) => setEmailApiKey(event.target.value)}
+              placeholder={
+                emailConnection
+                  ? `Saved key ending in ••••${emailConnection.lastFour || ''}`
+                  : 'Paste re_… key'
+              }
+              autoComplete="off"
+            />
+          </div>
+          {emailMessage && (
+            <p className={emailConnection ? 'sync-success' : 'domain-error'}>
+              {emailMessage}
+            </p>
+          )}
+          <div className="integration-form-foot">
+            <p>
+              <ShieldCheck /> Encrypted before storage and never shown to
+              clients.
+            </p>
+            <button
+              className="primary-action"
+              disabled={emailSaving || emailApiKey.length < 20 || !fromEmail}
+            >
+              {emailSaving
+                ? 'Saving securely…'
+                : emailConnection
+                  ? 'Replace email connection'
+                  : 'Connect invitation email'}
+            </button>
           </div>
         </form>
       </section>
