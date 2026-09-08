@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ClientPreviewBanner from '@/components/client-preview-banner';
 const nav = [
   [Building2, 'Clients'],
   [LayoutDashboard, 'Dashboard'],
@@ -35,26 +36,21 @@ const nav = [
   [Users, 'Team'],
   [Settings, 'Settings'],
 ] as const;
-const seedMetrics = [
-  ['Active campaigns', '4', '+1', 'vs previous period'],
-  ['Emails sent', '12,840', '+14.8%', 'vs previous period'],
-  ['Replies', '318', '+8.2%', '2.6% reply rate'],
-  ['Positive replies', '74', '+19.4%', '0.6% positive rate'],
-  ['Meetings booked', '12', '+20.0%', '3 added this week'],
+const emptyMetrics = [
+  ['Active campaigns', '0', '—', 'No synchronized data'],
+  ['Emails sent', '0', '—', 'No synchronized data'],
+  ['Replies', '0', '—', 'No synchronized data'],
+  ['Positive replies', '0', '—', 'No synchronized data'],
+  ['Meetings booked', '0', '—', 'No meetings recorded'],
 ] as const;
 const funnel = [
-  ['Prospects', '18,420', 100],
-  ['Contacted', '12,840', 82],
-  ['Delivered', '12,370', 73],
-  ['Replies', '318', 58],
-  ['Interested', '74', 46],
-  ['Meetings', '21', 35],
-  ['Opportunities', '8', 25],
-] as const;
-const seedCampaigns = [
-  ['Industrial Automation USA', 'Active', '3,810', '141', '37', '8', '3.7%'],
-  ['Logistics Leaders — Q3', 'Active', '2,460', '92', '21', '4', '3.8%'],
-  ['Manufacturing UK', 'Paused', '1,920', '48', '9', '2', '2.5%'],
+  ['Prospects', '0', 100],
+  ['Contacted', '0', 82],
+  ['Delivered', '0', 73],
+  ['Replies', '0', 58],
+  ['Interested', '0', 46],
+  ['Meetings', '0', 35],
+  ['Opportunities', '0', 25],
 ] as const;
 export default function Dashboard() {
   const [open, setOpen] = useState(false);
@@ -62,11 +58,13 @@ export default function Dashboard() {
     name: 'Workspace member',
     workspaceName: 'Your Workspace',
     role: 'client_viewer',
+    isImpersonating: false,
   });
   const [metrics, setMetrics] =
-    useState<readonly (readonly string[])[]>(seedMetrics);
-  const [campaigns, setCampaigns] =
-    useState<readonly (readonly string[])[]>(seedCampaigns);
+    useState<readonly (readonly string[])[]>(emptyMetrics);
+  const [campaigns, setCampaigns] = useState<readonly (readonly string[])[]>(
+    [],
+  );
   const [campaignIds, setCampaignIds] = useState<string[]>([]);
   const [liveTotals, setLiveTotals] = useState<{
     prospects: number;
@@ -132,12 +130,17 @@ export default function Dashboard() {
       }
       const data = (await response.json()) as {
         user: { name: string };
-        workspace: { name: string; role: string };
+        workspace: {
+          name: string;
+          role: string;
+          isImpersonating: boolean;
+        };
       };
       setSession({
         name: data.user.name,
         workspaceName: data.workspace.name,
         role: data.workspace.role,
+        isImpersonating: data.workspace.isImpersonating,
       });
       if (
         data.workspace.role === 'super_admin' &&
@@ -226,7 +229,6 @@ export default function Dashboard() {
         } | null;
       };
       setActivePackage(data.package);
-      if (!data.lastUpdatedAt) return;
       const format = new Intl.NumberFormat();
       setLiveTotals({
         prospects: data.metrics.prospects,
@@ -260,7 +262,7 @@ export default function Dashboard() {
           'Live',
           'interested prospects',
         ],
-        ['Meetings booked', '12', 'Manual', 'stored in workspace'],
+        ['Meetings booked', '0', 'Manual', 'stored in workspace'],
       ]);
       setCampaigns(
         data.campaigns.map((campaign) => [
@@ -275,7 +277,9 @@ export default function Dashboard() {
       );
       setCampaignIds(data.campaigns.map((campaign) => campaign.id));
       setLastUpdated(
-        `Last updated ${new Date(data.lastUpdatedAt).toLocaleString()}`,
+        data.lastUpdatedAt
+          ? `Last updated ${new Date(data.lastUpdatedAt).toLocaleString()}`
+          : 'No synchronized data yet',
       );
       setSelectedCampaign(data.selectedCampaign?.name ?? null);
       setCampaignSettings(data.selectedCampaign?.settings ?? null);
@@ -439,6 +443,10 @@ export default function Dashboard() {
             <ChevronDown size={15} />
           </div>
         </header>
+        <ClientPreviewBanner
+          active={session.isImpersonating}
+          workspaceName={session.workspaceName}
+        />
         <div className="content">
           <div className="page-head">
             <div>

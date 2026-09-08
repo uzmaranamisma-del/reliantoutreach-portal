@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Aside, Header, type SessionSummary } from '@/components/section-view';
+import ClientPreviewBanner from '@/components/client-preview-banner';
 
 type Settings = Record<string, any>;
 type Data = {
@@ -118,6 +119,7 @@ export default function CampaignWorkspace({
     email: '',
     workspaceName: 'Your Workspace',
     role: 'client_viewer',
+    isImpersonating: false,
   });
   const [draft, setDraft] = useState({
     name: '',
@@ -151,9 +153,15 @@ export default function CampaignWorkspace({
           trackClicks: Boolean(next.campaign.settings?.tracking?.clicks),
           scheduleSending: Boolean(next.campaign.settings?.scheduleSending),
           textOnlyEmails: Boolean(next.campaign.settings?.tracking?.textOnly),
-          sendUnsubscribeListHeader: Boolean(next.campaign.settings?.advanced?.unsubscribeHeader),
-          stopCoworkersOnReply: Boolean(next.campaign.settings?.advanced?.stopCoworkersOnReply),
-          useProspectsTimeZone: Boolean(next.campaign.settings?.advanced?.useProspectTimezone),
+          sendUnsubscribeListHeader: Boolean(
+            next.campaign.settings?.advanced?.unsubscribeHeader,
+          ),
+          stopCoworkersOnReply: Boolean(
+            next.campaign.settings?.advanced?.stopCoworkersOnReply,
+          ),
+          useProspectsTimeZone: Boolean(
+            next.campaign.settings?.advanced?.useProspectTimezone,
+          ),
           days: next.campaign.settings?.days ?? [],
         });
       })
@@ -164,13 +172,18 @@ export default function CampaignWorkspace({
       if (!response.ok) return;
       const value = (await response.json()) as {
         user: { name: string; email: string };
-        workspace: { name: string; role: string };
+        workspace: {
+          name: string;
+          role: string;
+          isImpersonating: boolean;
+        };
       };
       setSession({
         name: value.user.name,
         email: value.user.email,
         workspaceName: value.workspace.name,
         role: value.workspace.role,
+        isImpersonating: value.workspace.isImpersonating,
       });
     });
   }, []);
@@ -185,10 +198,16 @@ export default function CampaignWorkspace({
         body: JSON.stringify({
           ...draft,
           days: undefined,
-          ...Object.fromEntries(draft.days.flatMap(([name, enabled, after, before]) => {
-            const key = name.slice(0, 3);
-            return [[`send${key}`, enabled], [`send${key}After`, after], [`send${key}Before`, before]];
-          })),
+          ...Object.fromEntries(
+            draft.days.flatMap(([name, enabled, after, before]) => {
+              const key = name.slice(0, 3);
+              return [
+                [`send${key}`, enabled],
+                [`send${key}After`, after],
+                [`send${key}Before`, before],
+              ];
+            }),
+          ),
         }),
       },
     );
@@ -241,12 +260,25 @@ export default function CampaignWorkspace({
     if (!followupForm) return;
     setSaving(true);
     setSaveMessage('');
-    const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/followups`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...followupForm, action }),
-    });
-    const result = await response.json() as { error?: string };
-    if (!response.ok) { setSaveMessage(result.error || 'Follow-up could not be saved.'); setSaving(false); return; }
-    setSaveMessage(action === 'delete' ? 'Follow-up deleted. Synchronizing…' : 'Follow-up saved. Synchronizing…');
+    const response = await fetch(
+      `/api/campaigns/${encodeURIComponent(campaignId)}/followups`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...followupForm, action }),
+      },
+    );
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setSaveMessage(result.error || 'Follow-up could not be saved.');
+      setSaving(false);
+      return;
+    }
+    setSaveMessage(
+      action === 'delete'
+        ? 'Follow-up deleted. Synchronizing…'
+        : 'Follow-up saved. Synchronizing…',
+    );
     await fetch('/api/sync/outreach', { method: 'POST' }).catch(() => null);
     window.location.reload();
   };
@@ -308,6 +340,10 @@ export default function CampaignWorkspace({
       )}
       <section className="app-shell">
         <Header open={menuOpen} setOpen={setMenuOpen} session={session} />
+        <ClientPreviewBanner
+          active={session.isImpersonating}
+          workspaceName={session.workspaceName}
+        />
         <div className="campaign-workspace">
           <header className="campaign-workspace-head">
             <a href="/campaigns" aria-label="Back to campaigns">
@@ -382,13 +418,38 @@ export default function CampaignWorkspace({
                 <div className="read-only-note">
                   <Check size={15} /> Synchronized campaign content
                 </div>
-                {selectedStep !== 'initial' && session.role !== 'client_viewer' && (
-                  <button className="secondary-action step-edit-action" onClick={() => {
-                    const step = data.steps.find((item) => item.id === selectedStep);
-                    if (!step) return;
-                    setFollowupForm({ stepId: step.id, subject: step.subject || '', body: step.body || '', waitMin: step.waitAmount || 1, waitUnits: (step.waitUnit && ['minutes', 'hours', 'days'].includes(step.waitUnit.toLowerCase()) ? `${step.waitUnit[0].toUpperCase()}${step.waitUnit.slice(1).toLowerCase()}` : 'Days') as 'Minutes' | 'Hours' | 'Days', useOriginalSubject: Boolean(step.settings?.useOriginalSubject), sendInSameThread: Boolean(step.settings?.sendInSameThread) });
-                  }}><Pencil size={15} /> Edit follow-up</button>
-                )}
+                {selectedStep !== 'initial' &&
+                  session.role !== 'client_viewer' && (
+                    <button
+                      className="secondary-action step-edit-action"
+                      onClick={() => {
+                        const step = data.steps.find(
+                          (item) => item.id === selectedStep,
+                        );
+                        if (!step) return;
+                        setFollowupForm({
+                          stepId: step.id,
+                          subject: step.subject || '',
+                          body: step.body || '',
+                          waitMin: step.waitAmount || 1,
+                          waitUnits: (step.waitUnit &&
+                          ['minutes', 'hours', 'days'].includes(
+                            step.waitUnit.toLowerCase(),
+                          )
+                            ? `${step.waitUnit[0].toUpperCase()}${step.waitUnit.slice(1).toLowerCase()}`
+                            : 'Days') as 'Minutes' | 'Hours' | 'Days',
+                          useOriginalSubject: Boolean(
+                            step.settings?.useOriginalSubject,
+                          ),
+                          sendInSameThread: Boolean(
+                            step.settings?.sendInSameThread,
+                          ),
+                        });
+                      }}
+                    >
+                      <Pencil size={15} /> Edit follow-up
+                    </button>
+                  )}
                 <p className="eyebrow">
                   {selected.label}
                   {selected.wait ? ` · Sends after ${selected.wait}` : ''}
@@ -403,7 +464,21 @@ export default function CampaignWorkspace({
                     'Email content is not available from the current connection.'}
                 </div>
                 {session.role !== 'client_viewer' && (
-                  <button className="primary-action add-followup-action" onClick={() => setFollowupForm({ subject: '', body: '', waitMin: 3, waitUnits: 'Days', useOriginalSubject: true, sendInSameThread: true })}><Plus size={16} /> Add follow-up</button>
+                  <button
+                    className="primary-action add-followup-action"
+                    onClick={() =>
+                      setFollowupForm({
+                        subject: '',
+                        body: '',
+                        waitMin: 3,
+                        waitUnits: 'Days',
+                        useOriginalSubject: true,
+                        sendInSameThread: true,
+                      })
+                    }
+                  >
+                    <Plus size={16} /> Add follow-up
+                  </button>
                 )}
               </article>
             </section>
@@ -599,16 +674,160 @@ export default function CampaignWorkspace({
                     </label>
                   </div>
                   <div className="editor-checks">
-                    <label><input type="checkbox" disabled={!editing} checked={draft.scheduleSending} onChange={(event) => setDraft({ ...draft, scheduleSending: event.target.checked })} /> Sending schedule enabled</label>
-                    <label><input type="checkbox" disabled={!editing} checked={draft.textOnlyEmails} onChange={(event) => setDraft({ ...draft, textOnlyEmails: event.target.checked })} /> Send as text-only</label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        disabled={!editing}
+                        checked={draft.scheduleSending}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            scheduleSending: event.target.checked,
+                          })
+                        }
+                      />{' '}
+                      Sending schedule enabled
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        disabled={!editing}
+                        checked={draft.textOnlyEmails}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            textOnlyEmails: event.target.checked,
+                          })
+                        }
+                      />{' '}
+                      Send as text-only
+                    </label>
                   </div>
                   <div className="campaign-schedule-editor">
-                    {draft.days.map((day, index) => <div key={day[0]} className={day[1] ? 'enabled' : ''}><label><input type="checkbox" disabled={!editing || !draft.scheduleSending} checked={day[1]} onChange={(event) => setDraft({ ...draft, days: draft.days.map((item, itemIndex) => itemIndex === index ? [item[0], event.target.checked, item[2], item[3]] : item) })} /> {day[0]}</label><input aria-label={`${day[0]} start time`} type="time" disabled={!editing || !draft.scheduleSending || !day[1]} value={time(day[2])} onChange={(event) => { const [hours, minutes] = event.target.value.split(':').map(Number); setDraft({ ...draft, days: draft.days.map((item, itemIndex) => itemIndex === index ? [item[0], item[1], hours * 60 + minutes, item[3]] : item) }); }} /><span>to</span><input aria-label={`${day[0]} end time`} type="time" disabled={!editing || !draft.scheduleSending || !day[1]} value={time(day[3])} onChange={(event) => { const [hours, minutes] = event.target.value.split(':').map(Number); setDraft({ ...draft, days: draft.days.map((item, itemIndex) => itemIndex === index ? [item[0], item[1], item[2], hours * 60 + minutes] : item) }); }} /></div>)}
+                    {draft.days.map((day, index) => (
+                      <div key={day[0]} className={day[1] ? 'enabled' : ''}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            disabled={!editing || !draft.scheduleSending}
+                            checked={day[1]}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                days: draft.days.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? [
+                                        item[0],
+                                        event.target.checked,
+                                        item[2],
+                                        item[3],
+                                      ]
+                                    : item,
+                                ),
+                              })
+                            }
+                          />{' '}
+                          {day[0]}
+                        </label>
+                        <input
+                          aria-label={`${day[0]} start time`}
+                          type="time"
+                          disabled={
+                            !editing || !draft.scheduleSending || !day[1]
+                          }
+                          value={time(day[2])}
+                          onChange={(event) => {
+                            const [hours, minutes] = event.target.value
+                              .split(':')
+                              .map(Number);
+                            setDraft({
+                              ...draft,
+                              days: draft.days.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? [
+                                      item[0],
+                                      item[1],
+                                      hours * 60 + minutes,
+                                      item[3],
+                                    ]
+                                  : item,
+                              ),
+                            });
+                          }}
+                        />
+                        <span>to</span>
+                        <input
+                          aria-label={`${day[0]} end time`}
+                          type="time"
+                          disabled={
+                            !editing || !draft.scheduleSending || !day[1]
+                          }
+                          value={time(day[3])}
+                          onChange={(event) => {
+                            const [hours, minutes] = event.target.value
+                              .split(':')
+                              .map(Number);
+                            setDraft({
+                              ...draft,
+                              days: draft.days.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? [
+                                      item[0],
+                                      item[1],
+                                      item[2],
+                                      hours * 60 + minutes,
+                                    ]
+                                  : item,
+                              ),
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
                   </div>
                   <div className="editor-checks campaign-advanced-checks">
-                    <label><input type="checkbox" disabled={!editing} checked={draft.sendUnsubscribeListHeader} onChange={(event) => setDraft({ ...draft, sendUnsubscribeListHeader: event.target.checked })} /> Unsubscribe header</label>
-                    <label><input type="checkbox" disabled={!editing} checked={draft.stopCoworkersOnReply} onChange={(event) => setDraft({ ...draft, stopCoworkersOnReply: event.target.checked })} /> Stop related contacts on reply</label>
-                    <label><input type="checkbox" disabled={!editing} checked={draft.useProspectsTimeZone} onChange={(event) => setDraft({ ...draft, useProspectsTimeZone: event.target.checked })} /> Use prospect timezone</label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        disabled={!editing}
+                        checked={draft.sendUnsubscribeListHeader}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            sendUnsubscribeListHeader: event.target.checked,
+                          })
+                        }
+                      />{' '}
+                      Unsubscribe header
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        disabled={!editing}
+                        checked={draft.stopCoworkersOnReply}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            stopCoworkersOnReply: event.target.checked,
+                          })
+                        }
+                      />{' '}
+                      Stop related contacts on reply
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        disabled={!editing}
+                        checked={draft.useProspectsTimeZone}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            useProspectsTimeZone: event.target.checked,
+                          })
+                        }
+                      />{' '}
+                      Use prospect timezone
+                    </label>
                   </div>
                 </div>
                 <SettingCard
@@ -867,16 +1086,157 @@ export default function CampaignWorkspace({
           )}
           {followupForm && (
             <div className="followup-modal-backdrop">
-              <button className="followup-modal-dismiss" aria-label="Close follow-up editor" disabled={saving} onClick={() => setFollowupForm(null)} />
-              <section className="followup-modal" role="dialog" aria-modal="true" aria-label={followupForm.stepId ? 'Edit follow-up' : 'Add follow-up'}>
-                <header><div><p className="eyebrow">CAMPAIGN SEQUENCE</p><h2>{followupForm.stepId ? 'Edit follow-up' : 'Add follow-up'}</h2></div><button onClick={() => setFollowupForm(null)} aria-label="Close"><X size={20} /></button></header>
-                <div className="editor-grid"><label>Wait time<input type="number" min="1" max="1000" value={followupForm.waitMin} onChange={(event) => setFollowupForm({ ...followupForm, waitMin: Number(event.target.value) })} /></label><label>Time unit<select value={followupForm.waitUnits} onChange={(event) => setFollowupForm({ ...followupForm, waitUnits: event.target.value as 'Minutes' | 'Hours' | 'Days' })}><option>Minutes</option><option>Hours</option><option>Days</option></select></label></div>
-                <label className="followup-check"><input type="checkbox" checked={followupForm.useOriginalSubject} onChange={(event) => setFollowupForm({ ...followupForm, useOriginalSubject: event.target.checked })} /> Use original campaign subject</label>
-                {!followupForm.useOriginalSubject && <label>Subject<input maxLength={1024} value={followupForm.subject} onChange={(event) => setFollowupForm({ ...followupForm, subject: event.target.value })} /></label>}
-                <label>Email body<textarea value={followupForm.body} onChange={(event) => setFollowupForm({ ...followupForm, body: event.target.value })} /></label>
-                <label className="followup-check"><input type="checkbox" checked={followupForm.sendInSameThread} onChange={(event) => setFollowupForm({ ...followupForm, sendInSameThread: event.target.checked })} /> Send in the same email thread</label>
+              <button
+                className="followup-modal-dismiss"
+                aria-label="Close follow-up editor"
+                disabled={saving}
+                onClick={() => setFollowupForm(null)}
+              />
+              <section
+                className="followup-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label={
+                  followupForm.stepId ? 'Edit follow-up' : 'Add follow-up'
+                }
+              >
+                <header>
+                  <div>
+                    <p className="eyebrow">CAMPAIGN SEQUENCE</p>
+                    <h2>
+                      {followupForm.stepId ? 'Edit follow-up' : 'Add follow-up'}
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => setFollowupForm(null)}
+                    aria-label="Close"
+                  >
+                    <X size={20} />
+                  </button>
+                </header>
+                <div className="editor-grid">
+                  <label>
+                    Wait time
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={followupForm.waitMin}
+                      onChange={(event) =>
+                        setFollowupForm({
+                          ...followupForm,
+                          waitMin: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Time unit
+                    <select
+                      value={followupForm.waitUnits}
+                      onChange={(event) =>
+                        setFollowupForm({
+                          ...followupForm,
+                          waitUnits: event.target.value as
+                            | 'Minutes'
+                            | 'Hours'
+                            | 'Days',
+                        })
+                      }
+                    >
+                      <option>Minutes</option>
+                      <option>Hours</option>
+                      <option>Days</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="followup-check">
+                  <input
+                    type="checkbox"
+                    checked={followupForm.useOriginalSubject}
+                    onChange={(event) =>
+                      setFollowupForm({
+                        ...followupForm,
+                        useOriginalSubject: event.target.checked,
+                      })
+                    }
+                  />{' '}
+                  Use original campaign subject
+                </label>
+                {!followupForm.useOriginalSubject && (
+                  <label>
+                    Subject
+                    <input
+                      maxLength={1024}
+                      value={followupForm.subject}
+                      onChange={(event) =>
+                        setFollowupForm({
+                          ...followupForm,
+                          subject: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                )}
+                <label>
+                  Email body
+                  <textarea
+                    value={followupForm.body}
+                    onChange={(event) =>
+                      setFollowupForm({
+                        ...followupForm,
+                        body: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <label className="followup-check">
+                  <input
+                    type="checkbox"
+                    checked={followupForm.sendInSameThread}
+                    onChange={(event) =>
+                      setFollowupForm({
+                        ...followupForm,
+                        sendInSameThread: event.target.checked,
+                      })
+                    }
+                  />{' '}
+                  Send in the same email thread
+                </label>
                 {saveMessage && <p className="save-message">{saveMessage}</p>}
-                <footer>{followupForm.stepId && <button className="danger-action" disabled={saving} onClick={() => void saveFollowup('delete')}><Trash2 size={15} /> Delete</button>}<button className="secondary-action" disabled={saving} onClick={() => setFollowupForm(null)}>Cancel</button><button className="primary-action" disabled={saving || followupForm.waitMin < 1 || !followupForm.body.trim()} onClick={() => void saveFollowup(followupForm.stepId ? 'update' : 'create')}>{saving ? 'Saving…' : 'Save follow-up'}</button></footer>
+                <footer>
+                  {followupForm.stepId && (
+                    <button
+                      className="danger-action"
+                      disabled={saving}
+                      onClick={() => void saveFollowup('delete')}
+                    >
+                      <Trash2 size={15} /> Delete
+                    </button>
+                  )}
+                  <button
+                    className="secondary-action"
+                    disabled={saving}
+                    onClick={() => setFollowupForm(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="primary-action"
+                    disabled={
+                      saving ||
+                      followupForm.waitMin < 1 ||
+                      !followupForm.body.trim()
+                    }
+                    onClick={() =>
+                      void saveFollowup(
+                        followupForm.stepId ? 'update' : 'create',
+                      )
+                    }
+                  >
+                    {saving ? 'Saving…' : 'Save follow-up'}
+                  </button>
+                </footer>
               </section>
             </div>
           )}

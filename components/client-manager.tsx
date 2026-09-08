@@ -111,7 +111,7 @@ export default function ClientManager() {
     } else setError(result.error || 'Client could not be created.');
     setSaving(false);
   }
-  async function viewWorkspace(id: string) {
+  async function previewWorkspace(id: string) {
     setSaving(true);
     const response = await fetch('/api/admin/workspace', {
       method: 'POST',
@@ -223,9 +223,11 @@ export default function ClientManager() {
                     <button
                       className="row-action"
                       disabled={saving || currentId === client.id}
-                      onClick={() => void viewWorkspace(client.id)}
+                      onClick={() => void previewWorkspace(client.id)}
                     >
-                      {currentId === client.id ? 'Current' : 'View'}{' '}
+                      {currentId === client.id
+                        ? 'Current'
+                        : 'Preview as client'}{' '}
                       <ChevronRight size={15} />
                     </button>
                   </td>

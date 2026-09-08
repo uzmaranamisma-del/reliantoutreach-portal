@@ -35,6 +35,7 @@ import IntegrationSettings from '@/components/integration-settings';
 import DomainDashboard from '@/components/domain-dashboard';
 import TeamManager from '@/components/team-manager';
 import ClientManager from '@/components/client-manager';
+import ClientPreviewBanner from '@/components/client-preview-banner';
 const nav = [
   [Building2, 'Clients', 'clients'],
   [LayoutDashboard, 'Dashboard', 'dashboard'],
@@ -308,6 +309,7 @@ export default function SectionView({ section }: { section: string }) {
     email: '',
     workspaceName: 'Your Workspace',
     role: 'client_viewer',
+    isImpersonating: false,
   });
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -333,13 +335,18 @@ export default function SectionView({ section }: { section: string }) {
       if (!response.ok) return;
       const data = (await response.json()) as {
         user: { name: string; email: string };
-        workspace: { name: string; role: string };
+        workspace: {
+          name: string;
+          role: string;
+          isImpersonating: boolean;
+        };
       };
       setSession({
         name: data.user.name,
         email: data.user.email,
         workspaceName: data.workspace.name,
         role: data.workspace.role,
+        isImpersonating: data.workspace.isImpersonating,
       });
     });
   }, []);
@@ -537,6 +544,10 @@ export default function SectionView({ section }: { section: string }) {
       )}
       <section className="app-shell">
         <Header open={open} setOpen={setOpen} session={session} />
+        <ClientPreviewBanner
+          active={session.isImpersonating}
+          workspaceName={session.workspaceName}
+        />
         <div className="content">
           <div className="section-heading">
             <div>
@@ -577,7 +588,11 @@ export default function SectionView({ section }: { section: string }) {
             )}
           </div>
           {section === 'clients' ? (
-            session.role === 'super_admin' ? <ClientManager /> : <div className="table-empty">Super Admin access required.</div>
+            session.role === 'super_admin' ? (
+              <ClientManager />
+            ) : (
+              <div className="table-empty">Super Admin access required.</div>
+            )
           ) : section === 'team' ? (
             <TeamManager />
           ) : section === 'settings' ? (
@@ -771,6 +786,7 @@ export type SessionSummary = {
   email: string;
   workspaceName: string;
   role: string;
+  isImpersonating: boolean;
 };
 export function Aside({
   active,
@@ -790,7 +806,11 @@ export function Aside({
           <span>OUTREACH</span>
         </div>
       </a>
-      <a className="workspace" aria-label="Switch workspace" href={session.role === 'super_admin' ? '/clients' : '/dashboard'}>
+      <a
+        className="workspace"
+        aria-label="Switch workspace"
+        href={session.role === 'super_admin' ? '/clients' : '/dashboard'}
+      >
         <span className="workspace-logo">AA</span>
         <span>
           <b>{session.workspaceName}</b>
@@ -800,17 +820,22 @@ export function Aside({
       </a>
       <nav aria-label="Main navigation">
         <p className="nav-label">WORKSPACE</p>
-        {nav.filter(([, , path]) => path !== 'clients' || session.role === 'super_admin').map(([Icon, label, path]) => (
-          <a
-            href={`/${path}`}
-            className={path === active ? 'active' : ''}
-            key={path}
-          >
-            <Icon size={18} />
-            <span>{label}</span>
-            {path === 'replies' && <em>12</em>}
-          </a>
-        ))}
+        {nav
+          .filter(
+            ([, , path]) =>
+              path !== 'clients' || session.role === 'super_admin',
+          )
+          .map(([Icon, label, path]) => (
+            <a
+              href={`/${path}`}
+              className={path === active ? 'active' : ''}
+              key={path}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+              {path === 'replies' && <em>12</em>}
+            </a>
+          ))}
       </nav>
       <div className="sidebar-foot">
         <a href="mailto:support@reliantoutreach.com">

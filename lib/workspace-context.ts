@@ -16,7 +16,10 @@ function isConfiguredSuperAdmin(email: string) {
     .split(',')
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
-  return email.toLowerCase() === LOCAL_SITE_OWNER_EMAIL || configured.includes(email.toLowerCase());
+  return (
+    email.toLowerCase() === LOCAL_SITE_OWNER_EMAIL ||
+    configured.includes(email.toLowerCase())
+  );
 }
 
 export async function getWorkspaceContext() {
@@ -62,9 +65,11 @@ export async function getWorkspaceContext() {
     )
     .limit(1);
 
+  const configuredSuperAdmin = isConfiguredSuperAdmin(auth.email);
+
   // The Sites development identity represents the portal owner. In production,
   // SUPER_ADMIN_EMAILS explicitly identifies ReliantOutreach operators.
-  if (membership && isConfiguredSuperAdmin(auth.email) && membership.role !== 'super_admin') {
+  if (membership && configuredSuperAdmin && membership.role !== 'super_admin') {
     await db
       .update(workspaceMembers)
       .set({ role: 'super_admin', updatedAt: now })
@@ -77,43 +82,23 @@ export async function getWorkspaceContext() {
     membership = { ...membership, role: 'super_admin' };
   }
 
-  const [existingSuperAdmin] = await db
-    .select({ id: workspaceMembers.id })
-    .from(workspaceMembers)
-    .where(eq(workspaceMembers.role, 'super_admin'))
+  // Accept a matching pending invite even if this identity previously visited
+  // the portal and already owns a personal workspace.
+  const [invitation] = await db
+    .select()
+    .from(workspaceInvitations)
+    .where(
+      and(
+        eq(workspaceInvitations.email, auth.email.toLowerCase()),
+        eq(workspaceInvitations.status, 'pending'),
+        gt(workspaceInvitations.expiresAt, now),
+      ),
+    )
     .limit(1);
-  if (!existingSuperAdmin && membership?.role === 'client_admin') {
-    await db.update(workspaceMembers).set({ role: 'super_admin', updatedAt: now }).where(and(eq(workspaceMembers.userId, userId), eq(workspaceMembers.workspaceId, membership.workspaceId)));
-    membership = { ...membership, role: 'super_admin' };
-  }
-
-  const [globalAdmin] = await db
-    .select({ role: workspaceMembers.role })
-    .from(workspaceMembers)
-    .where(and(eq(workspaceMembers.userId, userId), eq(workspaceMembers.role, 'super_admin'), eq(workspaceMembers.status, 'active')))
-    .limit(1);
-  if (globalAdmin) {
-    const selectedId = (await cookies()).get('reliant_workspace')?.value;
-    if (selectedId) {
-      const [selected] = await db.select({ workspaceId: workspaces.id, workspaceName: workspaces.name }).from(workspaces).where(and(eq(workspaces.id, selectedId), eq(workspaces.status, 'active'))).limit(1);
-      if (selected) membership = { ...selected, role: 'super_admin' };
-    }
-  }
-
-  if (!membership) {
-    const [invitation] = await db
-      .select()
-      .from(workspaceInvitations)
-      .where(
-        and(
-          eq(workspaceInvitations.email, auth.email.toLowerCase()),
-          eq(workspaceInvitations.status, 'pending'),
-          gt(workspaceInvitations.expiresAt, now),
-        ),
-      )
-      .limit(1);
-    if (invitation) {
-      await db.insert(workspaceMembers).values({
+  if (invitation) {
+    await db
+      .insert(workspaceMembers)
+      .values({
         id: crypto.randomUUID(),
         workspaceId: invitation.workspaceId,
         userId,
@@ -121,11 +106,13 @@ export async function getWorkspaceContext() {
         status: 'active',
         createdAt: now,
         updatedAt: now,
-      });
-      await db
-        .update(workspaceInvitations)
-        .set({ status: 'accepted', acceptedAt: now, updatedAt: now })
-        .where(eq(workspaceInvitations.id, invitation.id));
+      })
+      .onConflictDoNothing();
+    await db
+      .update(workspaceInvitations)
+      .set({ status: 'accepted', acceptedAt: now, updatedAt: now })
+      .where(eq(workspaceInvitations.id, invitation.id));
+    if (!configuredSuperAdmin) {
       const [invitedMembership] = await db
         .select({
           workspaceId: workspaceMembers.workspaceId,
@@ -142,6 +129,50 @@ export async function getWorkspaceContext() {
         )
         .limit(1);
       membership = invitedMembership;
+    }
+  }
+
+  const [globalAdmin] = await db
+    .select({
+      workspaceId: workspaceMembers.workspaceId,
+      workspaceName: workspaces.name,
+    })
+    .from(workspaceMembers)
+    .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
+    .where(
+      and(
+        eq(workspaceMembers.userId, userId),
+        eq(workspaceMembers.role, 'super_admin'),
+        eq(workspaceMembers.status, 'active'),
+        eq(workspaces.status, 'active'),
+      ),
+    )
+    .limit(1);
+  let isImpersonating = false;
+  if (globalAdmin) {
+    const cookieStore = await cookies();
+    const selectedId = cookieStore.get('reliant_workspace')?.value;
+    const previewId = cookieStore.get('reliant_client_preview')?.value;
+    if (selectedId) {
+      const [selected] = await db
+        .select({
+          workspaceId: workspaces.id,
+          workspaceName: workspaces.name,
+        })
+        .from(workspaces)
+        .where(
+          and(eq(workspaces.id, selectedId), eq(workspaces.status, 'active')),
+        )
+        .limit(1);
+      if (selected) {
+        isImpersonating = previewId === selectedId;
+        membership = {
+          ...selected,
+          role: isImpersonating ? 'client_admin' : 'super_admin',
+        };
+      } else membership = { ...globalAdmin, role: 'super_admin' };
+    } else {
+      membership = { ...globalAdmin, role: 'super_admin' };
     }
   }
 
@@ -174,7 +205,7 @@ export async function getWorkspaceContext() {
     membership = {
       workspaceId,
       workspaceName: `${identity}'s Workspace`,
-      role: isConfiguredSuperAdmin(auth.email) ? 'super_admin' : 'client_admin',
+      role: configuredSuperAdmin ? 'super_admin' : 'client_admin',
     };
 
     if (membership.role === 'super_admin') {
@@ -190,5 +221,5 @@ export async function getWorkspaceContext() {
     }
   }
 
-  return { db, auth, userId, ...membership };
+  return { db, auth, userId, isImpersonating, ...membership };
 }

@@ -14,6 +14,7 @@ export async function GET() {
         id: context.workspaceId,
         name: context.workspaceName,
         role: context.role,
+        isImpersonating: context.isImpersonating,
       },
     },
     { headers: { 'Cache-Control': 'no-store' } },
