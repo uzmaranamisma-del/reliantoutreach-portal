@@ -80,9 +80,11 @@ export default function Dashboard() {
   const [activePackage, setActivePackage] = useState<{
     name: string;
     monthlyCredits: number;
+    monthlyEmailCapacity: number;
     priceCents: number;
     renewalDate: string | null;
     usedCredits: number;
+    usedEmails: number;
   } | null>(null);
   const [campaignSettings, setCampaignSettings] = useState<{
     initialEmail: {
@@ -176,9 +178,11 @@ export default function Dashboard() {
         package: {
           name: string;
           monthlyCredits: number;
+          monthlyEmailCapacity: number;
           priceCents: number;
           renewalDate: string | null;
           usedCredits: number;
+          usedEmails: number;
         } | null;
         selectedCampaign: {
           id: string;
@@ -653,6 +657,32 @@ export default function Dashboard() {
                     0,
                     (activePackage?.monthlyCredits ?? 0) -
                       (activePackage?.usedCredits ?? 0),
+                  ).toLocaleString()}{' '}
+                  remaining
+                </span>
+              </p>
+            </div>
+            <div className="package-credits package-emails">
+              <div>
+                <span>Monthly emails</span>
+                <b>
+                  {(activePackage?.monthlyEmailCapacity ?? 0).toLocaleString()}
+                </b>
+              </div>
+              <div className="credits-track">
+                <i
+                  style={{
+                    width: `${activePackage?.monthlyEmailCapacity ? Math.min(100, (activePackage.usedEmails / activePackage.monthlyEmailCapacity) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <p>
+                <b>{(activePackage?.usedEmails ?? 0).toLocaleString()} sent</b>
+                <span>
+                  {Math.max(
+                    0,
+                    (activePackage?.monthlyEmailCapacity ?? 0) -
+                      (activePackage?.usedEmails ?? 0),
                   ).toLocaleString()}{' '}
                   remaining
                 </span>

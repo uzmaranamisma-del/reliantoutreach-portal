@@ -28,6 +28,9 @@ export const workspaces = sqliteTable('workspaces', {
   status: text('status').notNull().default('trial'),
   packageName: text('package_name').notNull().default('Launch'),
   monthlyCredits: integer('monthly_credits').notNull().default(10000),
+  monthlyEmailCapacity: integer('monthly_email_capacity')
+    .notNull()
+    .default(10000),
   priceCents: integer('price_cents').notNull().default(0),
   renewalDate: integer('renewal_date', { mode: 'timestamp' }),
   accountManager: text('account_manager'),

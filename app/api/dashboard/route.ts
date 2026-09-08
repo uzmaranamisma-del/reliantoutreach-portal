@@ -20,7 +20,11 @@ export async function GET(request: Request) {
       .where(eq(mailboxes.workspaceId, workspaceId))
       .limit(1000),
   ]);
-  const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
   const selectedCampaign = requestedCampaignId
     ? (campaignRows.find((row) => row.id === requestedCampaignId) ?? null)
     : null;
@@ -97,7 +101,23 @@ export async function GET(request: Request) {
           }
         : null,
       lastUpdatedAt: latest ? new Date(latest).toISOString() : null,
-      package: workspace ? { name: workspace.packageName, monthlyCredits: workspace.monthlyCredits, priceCents: workspace.priceCents, renewalDate: workspace.renewalDate?.toISOString() ?? null, usedCredits: campaignRows.reduce((sum, row) => sum + row.sentCount, 0) } : null,
+      package: workspace
+        ? {
+            name: workspace.packageName,
+            monthlyCredits: workspace.monthlyCredits,
+            monthlyEmailCapacity: workspace.monthlyEmailCapacity,
+            priceCents: workspace.priceCents,
+            renewalDate: workspace.renewalDate?.toISOString() ?? null,
+            usedCredits: campaignRows.reduce(
+              (sum, row) => sum + row.prospectCount,
+              0,
+            ),
+            usedEmails: campaignRows.reduce(
+              (sum, row) => sum + row.sentCount,
+              0,
+            ),
+          }
+        : null,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );

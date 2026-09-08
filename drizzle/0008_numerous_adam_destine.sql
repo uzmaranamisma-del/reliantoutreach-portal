@@ -1,0 +1,1 @@
+ALTER TABLE `workspaces` ADD `monthly_email_capacity` integer DEFAULT 10000 NOT NULL;
