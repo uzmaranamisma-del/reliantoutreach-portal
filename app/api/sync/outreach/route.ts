@@ -44,6 +44,11 @@ const prospectStatusMap: Record<string, string> = {
 export async function POST(request: Request) {
   const context = await getWorkspaceContext();
   if (!context) return json({ error: 'Authentication required' }, 401);
+  if (!context.isPlatformAdmin)
+    return json({ error: 'Super Admin access required' }, 403);
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin)
+    return json({ error: 'Request could not be verified' }, 403);
   const { db, workspaceId } = context;
   const quick = new URL(request.url).searchParams.get('mode') === 'quick';
   const now = new Date();
@@ -341,7 +346,9 @@ export async function POST(request: Request) {
                 : (followup.subject ?? null),
               body: followup.body ?? null,
               settings: {
-                sequenceExternalIdCiphertext: await encryptSecret(String(branch.sequence.sequenceId)),
+                sequenceExternalIdCiphertext: await encryptSecret(
+                  String(branch.sequence.sequenceId),
+                ),
                 useOriginalSubject: followup.useOriginalSubject ?? false,
                 sendInSameThread: followup.sendInSameThread ?? false,
                 replyInThread: followup.replyInThread ?? false,
@@ -373,7 +380,9 @@ export async function POST(request: Request) {
                   : (followup.subject ?? null),
                 body: followup.body ?? null,
                 settings: {
-                  sequenceExternalIdCiphertext: await encryptSecret(String(branch.sequence.sequenceId)),
+                  sequenceExternalIdCiphertext: await encryptSecret(
+                    String(branch.sequence.sequenceId),
+                  ),
                   useOriginalSubject: followup.useOriginalSubject ?? false,
                   sendInSameThread: followup.sendInSameThread ?? false,
                   replyInThread: followup.replyInThread ?? false,

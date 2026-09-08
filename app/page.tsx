@@ -73,7 +73,7 @@ export default function Dashboard() {
     replies: number;
     positiveReplies: number;
   } | null>(null);
-  const [lastUpdated, setLastUpdated] = useState('Demo data');
+  const [lastUpdated, setLastUpdated] = useState('Loading workspace data…');
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [activePackage, setActivePackage] = useState<{
     name: string;
@@ -345,6 +345,11 @@ export default function Dashboard() {
     : [];
   const activeWorkspaceStep =
     workspaceSteps[selectedSequenceStep] ?? workspaceSteps[0] ?? null;
+  const monthlyEmailCapacity = activePackage?.monthlyEmailCapacity ?? 0;
+  const usedEmails = activePackage?.usedEmails ?? 0;
+  const emailUsagePercent = monthlyEmailCapacity
+    ? Math.min(100, (usedEmails / monthlyEmailCapacity) * 100)
+    : 0;
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#142033]">
       <aside className={`sidebar ${open ? 'open' : ''}`}>
@@ -378,7 +383,9 @@ export default function Dashboard() {
               >
                 <Icon size={18} />
                 <span>{label}</span>
-                {label === 'Replies' && <em>12</em>}
+                {label === 'Replies' && Boolean(liveTotals?.replies) && (
+                  <em>{liveTotals?.replies.toLocaleString()}</em>
+                )}
               </a>
             ))}
         </nav>
@@ -389,11 +396,14 @@ export default function Dashboard() {
           <div className="capacity">
             <span>
               <b>Monthly email usage</b>
-              <small>32,845 of 50,000</small>
+              <small>
+                {usedEmails.toLocaleString()} of{' '}
+                {monthlyEmailCapacity.toLocaleString()}
+              </small>
             </span>
-            <strong>65.7%</strong>
+            <strong>{emailUsagePercent.toFixed(1)}%</strong>
             <i>
-              <u />
+              <u style={{ width: `${emailUsagePercent}%` }} />
             </i>
           </div>
         </div>
@@ -450,7 +460,15 @@ export default function Dashboard() {
         <div className="content">
           <div className="page-head">
             <div>
-              <p>THURSDAY, SEPTEMBER 4</p>
+              <p>
+                {new Intl.DateTimeFormat('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })
+                  .format(new Date())
+                  .toUpperCase()}
+              </p>
               <h1>Welcome, {session.name.split(' ')[0]}</h1>
               <span>
                 {selectedCampaign

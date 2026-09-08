@@ -31,6 +31,11 @@ export async function GET() {
 export async function POST(request: Request) {
   const ctx = await context();
   if (!ctx) return json({ error: 'Authentication required' }, 401);
+  if (!ctx.isPlatformAdmin)
+    return json({ error: 'Super Admin access required' }, 403);
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin)
+    return json({ error: 'Request could not be verified' }, 403);
   let apiKey = '';
   try {
     const body = (await request.json()) as { apiKey?: unknown };

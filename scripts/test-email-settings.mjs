@@ -25,6 +25,26 @@ const responseSource = await readFile(
   'utf8',
 );
 const { responseJson } = await import(moduleUrl(responseSource));
+const invitationTokenSource = await readFile(
+  new URL('../lib/invitation-token.ts', import.meta.url),
+  'utf8',
+);
+const invitationTokens = await import(moduleUrl(invitationTokenSource));
+
+test('invitation tokens are unique, opaque and hash consistently', async () => {
+  const first = invitationTokens.createInvitationToken();
+  const second = invitationTokens.createInvitationToken();
+  assert.match(first, /^[a-f0-9]{64}$/);
+  assert.notEqual(first, second);
+  assert.equal(
+    await invitationTokens.hashInvitationToken(first),
+    await invitationTokens.hashInvitationToken(first),
+  );
+  assert.notEqual(
+    await invitationTokens.hashInvitationToken(first),
+    await invitationTokens.hashInvitationToken(second),
+  );
+});
 
 test('empty, HTML and malformed responses do not throw', async () => {
   for (const body of ['', '<html>Server error</html>', '{', 'null', '[]']) {

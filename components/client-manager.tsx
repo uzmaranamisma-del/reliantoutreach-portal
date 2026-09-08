@@ -4,12 +4,16 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleDollarSign,
+  KeyRound,
   Plus,
+  RefreshCw,
   Search,
+  Send,
   Users,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { responseJson } from '@/lib/response-json';
 
 type Client = {
   id: string;
@@ -51,11 +55,14 @@ export default function ClientManager() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [form, setForm] = useState(emptyForm);
+  const [onboarding, setOnboarding] = useState<Client | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [onboardingStep, setOnboardingStep] = useState('');
   const load = useCallback(async () => {
     const response = await fetch('/api/admin/clients', { cache: 'no-store' });
     if (!response.ok) {
       setError('Client records are unavailable.');
-      return;
+      return [] as Client[];
     }
     const data = (await response.json()) as {
       clients: Client[];
@@ -63,6 +70,7 @@ export default function ClientManager() {
     };
     setClients(data.clients);
     setCurrentId(data.currentWorkspaceId);
+    return data.clients;
   }, []);
   useEffect(() => {
     void Promise.resolve().then(load);
@@ -97,19 +105,114 @@ export default function ClientManager() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
-    const result = (await response.json()) as {
+    const result = (await responseJson(response)) as {
       error?: string;
-      warning?: string;
+      message?: string;
+      id?: string;
     };
     if (response.ok) {
       setOpen(false);
       setForm({ ...emptyForm });
-      setNotice(
-        result.warning || 'Client workspace created and invitation email sent.',
-      );
-      await load();
+      const records = await load();
+      const created = records.find((client) => client.id === result.id);
+      setNotice(result.message || 'Client workspace created.');
+      if (created) setOnboarding(created);
     } else setError(result.error || 'Client could not be created.');
     setSaving(false);
+  }
+  async function setupAndInvite(event: React.SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!onboarding?.primaryContactEmail) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    let previewSelected = false;
+    try {
+      setOnboardingStep('Opening the client workspace…');
+      const selectResponse = await fetch('/api/admin/workspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: onboarding.id }),
+      });
+      if (!selectResponse.ok) throw new Error('WORKSPACE_SELECT_FAILED');
+      previewSelected = true;
+
+      if (apiKey.trim()) {
+        setOnboardingStep('Saving the encrypted connection…');
+        const connectionResponse = await fetch('/api/integrations/outreach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: apiKey.trim() }),
+        });
+        const connectionResult = (await responseJson(connectionResponse)) as {
+          error?: string;
+        };
+        if (!connectionResponse.ok)
+          throw new Error(
+            connectionResult.error || 'Connection could not be saved.',
+          );
+      } else if (
+        !['configured', 'connected'].includes(onboarding.integrationStatus)
+      ) {
+        throw new Error('Enter this client’s outreach API key.');
+      }
+
+      if (onboarding.integrationStatus !== 'connected' || apiKey.trim()) {
+        setOnboardingStep(
+          'Synchronizing campaigns, prospects, replies and email accounts…',
+        );
+        const syncResponse = await fetch('/api/sync/outreach', {
+          method: 'POST',
+        });
+        const syncResult = (await responseJson(syncResponse)) as {
+          error?: string;
+        };
+        if (!syncResponse.ok)
+          throw new Error(
+            syncResult.error || 'Initial synchronization could not complete.',
+          );
+      }
+
+      if (onboarding.members === 0) {
+        setOnboardingStep('Sending the private portal invitation…');
+        const invitationResponse = await fetch('/api/team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: onboarding.primaryContactEmail,
+            role: 'client_admin',
+          }),
+        });
+        const invitationResult = (await responseJson(invitationResponse)) as {
+          error?: string;
+        };
+        if (!invitationResponse.ok)
+          throw new Error(
+            invitationResult.error || 'Invitation email could not be sent.',
+          );
+        setNotice(
+          `${onboarding.name} is synchronized and the client invitation was sent to ${onboarding.primaryContactEmail}.`,
+        );
+      } else {
+        setNotice(`${onboarding.name} is connected and synchronized.`);
+      }
+      setOnboarding(null);
+      setApiKey('');
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Client onboarding could not be completed.',
+      );
+    } finally {
+      if (previewSelected)
+        await fetch('/api/admin/workspace', { method: 'DELETE' }).catch(
+          () => null,
+        );
+      setOnboardingStep('');
+      setSaving(false);
+      await load();
+    }
   }
   async function previewWorkspace(id: string) {
     setSaving(true);
@@ -220,16 +323,35 @@ export default function ClientManager() {
                   </td>
                   <td>{client.accountManager || 'Unassigned'}</td>
                   <td>
-                    <button
-                      className="row-action"
-                      disabled={saving || currentId === client.id}
-                      onClick={() => void previewWorkspace(client.id)}
-                    >
-                      {currentId === client.id
-                        ? 'Current'
-                        : 'Preview as client'}{' '}
-                      <ChevronRight size={15} />
-                    </button>
+                    <div className="client-row-actions">
+                      {client.id !== currentId &&
+                        (client.integrationStatus !== 'connected' ||
+                          client.members === 0) && (
+                          <button
+                            className="row-action setup"
+                            disabled={saving}
+                            onClick={() => {
+                              setError('');
+                              setOnboarding(client);
+                            }}
+                          >
+                            <KeyRound size={14} />
+                            {client.integrationStatus === 'connected'
+                              ? 'Invite client'
+                              : 'Set up & invite'}
+                          </button>
+                        )}
+                      <button
+                        className="row-action"
+                        disabled={saving || currentId === client.id}
+                        onClick={() => void previewWorkspace(client.id)}
+                      >
+                        {currentId === client.id
+                          ? 'Current'
+                          : 'Preview as client'}{' '}
+                        <ChevronRight size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -370,8 +492,8 @@ export default function ClientManager() {
               />
             </label>
             <p>
-              The client will receive a Client Admin invitation as soon as the
-              workspace is created.
+              The workspace will be created first. You will securely connect and
+              synchronize its outreach data before the invitation is sent.
             </p>
             <footer>
               <button
@@ -382,7 +504,105 @@ export default function ClientManager() {
                 Cancel
               </button>
               <button className="primary-action" disabled={saving}>
-                {saving ? 'Creating & inviting…' : 'Create workspace & invite'}
+                {saving ? 'Creating workspace…' : 'Create & continue setup'}
+              </button>
+            </footer>
+          </form>
+        </div>
+      )}
+      {onboarding && (
+        <div className="followup-modal-backdrop">
+          <button
+            className="followup-modal-dismiss"
+            onClick={() => !saving && setOnboarding(null)}
+            aria-label="Close onboarding"
+          />
+          <form
+            className="followup-modal client-form onboarding-form"
+            onSubmit={(event) => void setupAndInvite(event)}
+          >
+            <header>
+              <div>
+                <p className="eyebrow">PRIVATE CLIENT ONBOARDING</p>
+                <h2>Set up {onboarding.name}</h2>
+              </div>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setOnboarding(null)}
+                aria-label="Close"
+              >
+                <X />
+              </button>
+            </header>
+            <div className="onboarding-steps">
+              <span className="done">
+                <CheckCircle2 /> Workspace created
+              </span>
+              <span
+                className={
+                  onboarding.integrationStatus === 'connected' ? 'done' : ''
+                }
+              >
+                <RefreshCw /> Data synchronized
+              </span>
+              <span className={onboarding.members > 0 ? 'done' : ''}>
+                <Send /> Client invited
+              </span>
+            </div>
+            <label>
+              Client email
+              <input
+                type="email"
+                readOnly
+                value={onboarding.primaryContactEmail || ''}
+              />
+            </label>
+            <label>
+              Outreach API key
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                autoComplete="off"
+                placeholder={
+                  ['configured', 'connected'].includes(
+                    onboarding.integrationStatus,
+                  )
+                    ? 'Saved securely — leave blank to use it'
+                    : 'Paste this client’s API key'
+                }
+                required={
+                  !['configured', 'connected'].includes(
+                    onboarding.integrationStatus,
+                  )
+                }
+              />
+            </label>
+            <p>
+              The key is encrypted and never shown to the client. Invitation is
+              sent only after the initial synchronization succeeds.
+            </p>
+            {onboardingStep && (
+              <p className="onboarding-progress">
+                <RefreshCw /> {onboardingStep}
+              </p>
+            )}
+            <footer>
+              <button
+                type="button"
+                className="secondary-action"
+                disabled={saving}
+                onClick={() => setOnboarding(null)}
+              >
+                Cancel
+              </button>
+              <button className="primary-action" disabled={saving}>
+                {saving
+                  ? 'Completing onboarding…'
+                  : onboarding.members === 0
+                    ? 'Sync data & send invite'
+                    : 'Sync client data'}
               </button>
             </footer>
           </form>

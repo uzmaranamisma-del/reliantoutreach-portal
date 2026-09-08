@@ -25,6 +25,7 @@ export async function deliverWorkspaceInvitation(input: {
   credentialsCiphertext: string;
   email: string;
   invitationId: string;
+  invitationToken: string;
   portalUrl: string;
   role: InvitationRole;
   workspaceName: string;
@@ -47,7 +48,7 @@ export async function deliverWorkspaceInvitation(input: {
       from: `ReliantOutreach <${credentials.fromEmail}>`,
       to: [input.email],
       subject: `You are invited to ${input.workspaceName}`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#0e2317"><div style="display:inline-grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#c8f169;font-weight:800">R</div><h1 style="font-size:24px">You are invited to ReliantOutreach</h1><p>You have been invited to join <strong>${escapeHtml(input.workspaceName)}</strong> as ${input.role === 'client_admin' ? 'Client Admin' : 'Client Viewer'}.</p><a href="${escapeHtml(input.portalUrl)}/login" style="display:inline-block;margin-top:16px;padding:12px 18px;border-radius:10px;background:#0e2317;color:#fff;text-decoration:none;font-weight:700">Accept invitation</a><p style="margin-top:24px;color:#6b7a70;font-size:13px">Use ${escapeHtml(input.email)} when signing in. This invitation expires in 7 days.</p></div>`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#0e2317"><div style="display:inline-grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#c8f169;font-weight:800">R</div><h1 style="font-size:24px">You are invited to ReliantOutreach</h1><p>You have been invited to join <strong>${escapeHtml(input.workspaceName)}</strong> as ${input.role === 'client_admin' ? 'Client Admin' : 'Client Viewer'}.</p><a href="${escapeHtml(input.portalUrl)}/accept-invitation?token=${encodeURIComponent(input.invitationToken)}" style="display:inline-block;margin-top:16px;padding:12px 18px;border-radius:10px;background:#0e2317;color:#fff;text-decoration:none;font-weight:700">Accept invitation</a><p style="margin-top:24px;color:#6b7a70;font-size:13px">Use ${escapeHtml(input.email)} when signing in. This private invitation expires in 7 days.</p></div>`,
     }),
     signal: AbortSignal.timeout(15_000),
   });

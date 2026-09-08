@@ -1,8 +1,6 @@
-import { ArrowRight, BadgeCheck, UserPlus } from 'lucide-react';
-import { chatGPTSignInPath, getChatGPTUser } from '@/app/chatgpt-auth';
+import { ArrowRight, UserPlus } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 export default async function SignupPage() {
-  const user = await getChatGPTUser();
   return (
     <main className="auth-page">
       <section className="auth-brand">
@@ -14,15 +12,15 @@ export default async function SignupPage() {
           </span>
         </a>
         <div>
-          <p>CREATE YOUR ACCOUNT</p>
+          <p>INVITATION-ONLY ACCESS</p>
           <h1>
             Your outbound operation,
             <br />
             all in one place.
           </h1>
           <span>
-            Register securely and create your isolated ReliantOutreach
-            workspace.
+            Every client workspace is privately prepared before access is
+            issued.
           </span>
         </div>
         <footer>Revenue Infrastructure for B2B Companies</footer>
@@ -32,43 +30,27 @@ export default async function SignupPage() {
           <span className="auth-lock">
             <UserPlus />
           </span>
-          <h2>Register new user</h2>
+          <h2>Request client access</h2>
           <p>
-            Your verified identity becomes your secure ReliantOutreach account.
+            ReliantOutreach is invitation-only. Your workspace is prepared and
+            synchronized before access is issued.
           </p>
-          {user ? (
-            <>
-              <div className="registration-ready">
-                <BadgeCheck />
-                <div>
-                  <b>Identity verified</b>
-                  <small>{user.email}</small>
-                </div>
-              </div>
-              <a className="auth-primary" href="/prospects">
-                Create my workspace <ArrowRight />
-              </a>
-            </>
-          ) : (
-            <a
-              className="auth-primary"
-              href={chatGPTSignInPath('/prospects')}
-              target="_top"
-            >
-              Verify and register <ArrowRight />
-            </a>
-          )}
+          <a className="auth-primary" href="/login">
+            Sign in with an invitation <ArrowRight />
+          </a>
           <div className="auth-divider">
             <i />
-            Already registered?
+            Need access?
             <i />
           </div>
-          <a className="auth-secondary" href="/login">
-            Back to sign in
+          <a
+            className="auth-secondary"
+            href="mailto:info@reliantoutreach.com?subject=Client portal access"
+          >
+            Contact your ReliantOutreach account manager
           </a>
           <small className="auth-note">
-            By registering, you agree to use the platform responsibly and
-            protect your account access.
+            Use the same email address that received your private invitation.
           </small>
         </div>
       </section>

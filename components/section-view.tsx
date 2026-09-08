@@ -596,7 +596,20 @@ export default function SectionView({ section }: { section: string }) {
           ) : section === 'team' ? (
             <TeamManager />
           ) : section === 'settings' ? (
-            <IntegrationSettings />
+            session.role === 'super_admin' ? (
+              <IntegrationSettings />
+            ) : (
+              <section className="panel managed-settings">
+                <Settings size={24} />
+                <div>
+                  <h2>Workspace settings are managed for you</h2>
+                  <p>
+                    Your outreach connection, synchronization and sending
+                    infrastructure are securely managed by ReliantOutreach.
+                  </p>
+                </div>
+              </section>
+            )
           ) : section === 'domains' ? (
             <DomainDashboard refreshKey={domainRefresh} />
           ) : section === 'replies' ? (

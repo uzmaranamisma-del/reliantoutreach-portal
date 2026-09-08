@@ -9,6 +9,10 @@ import {
   InvitationDeliveryError,
 } from '@/lib/invitation-email';
 import { getWorkspaceContext } from '@/lib/workspace-context';
+import {
+  createInvitationToken,
+  hashInvitationToken,
+} from '@/lib/invitation-token';
 import { and, desc, eq } from 'drizzle-orm';
 
 export async function GET() {
@@ -62,6 +66,12 @@ export async function POST(request: Request) {
   )
     return Response.json(
       { error: 'You do not have permission to invite members.' },
+      { status: 403 },
+    );
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin)
+    return Response.json(
+      { error: 'Request could not be verified.' },
       { status: 403 },
     );
 
@@ -152,12 +162,13 @@ export async function POST(request: Request) {
     );
 
   const invitationId = crypto.randomUUID();
+  const invitationToken = createInvitationToken();
   await context.db.insert(workspaceInvitations).values({
     id: invitationId,
     workspaceId: context.workspaceId,
     email,
     role,
-    tokenHash: crypto.randomUUID(),
+    tokenHash: await hashInvitationToken(invitationToken),
     status: 'pending',
     invitedByUserId: context.userId,
     expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
@@ -170,6 +181,7 @@ export async function POST(request: Request) {
       credentialsCiphertext: emailIntegration.credentialsCiphertext,
       email,
       invitationId,
+      invitationToken,
       portalUrl: new URL(request.url).origin,
       role,
       workspaceName: context.workspaceName,

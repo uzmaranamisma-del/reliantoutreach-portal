@@ -1,12 +1,7 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
-import {
-  users,
-  workspaceInvitations,
-  workspaceMembers,
-  workspaces,
-} from '@/db/schema';
-import { and, eq, gt } from 'drizzle-orm';
+import { users, workspaceMembers, workspaces } from '@/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
 const LOCAL_SITE_OWNER_EMAIL = 'seedy@sites.test';
@@ -82,56 +77,6 @@ export async function getWorkspaceContext() {
     membership = { ...membership, role: 'super_admin' };
   }
 
-  // Accept a matching pending invite even if this identity previously visited
-  // the portal and already owns a personal workspace.
-  const [invitation] = await db
-    .select()
-    .from(workspaceInvitations)
-    .where(
-      and(
-        eq(workspaceInvitations.email, auth.email.toLowerCase()),
-        eq(workspaceInvitations.status, 'pending'),
-        gt(workspaceInvitations.expiresAt, now),
-      ),
-    )
-    .limit(1);
-  if (invitation) {
-    await db
-      .insert(workspaceMembers)
-      .values({
-        id: crypto.randomUUID(),
-        workspaceId: invitation.workspaceId,
-        userId,
-        role: invitation.role,
-        status: 'active',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoNothing();
-    await db
-      .update(workspaceInvitations)
-      .set({ status: 'accepted', acceptedAt: now, updatedAt: now })
-      .where(eq(workspaceInvitations.id, invitation.id));
-    if (!configuredSuperAdmin) {
-      const [invitedMembership] = await db
-        .select({
-          workspaceId: workspaceMembers.workspaceId,
-          workspaceName: workspaces.name,
-          role: workspaceMembers.role,
-        })
-        .from(workspaceMembers)
-        .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-        .where(
-          and(
-            eq(workspaceMembers.userId, userId),
-            eq(workspaceMembers.workspaceId, invitation.workspaceId),
-          ),
-        )
-        .limit(1);
-      membership = invitedMembership;
-    }
-  }
-
   const [globalAdmin] = await db
     .select({
       workspaceId: workspaceMembers.workspaceId,
@@ -148,10 +93,10 @@ export async function getWorkspaceContext() {
       ),
     )
     .limit(1);
+  const cookieStore = await cookies();
+  const selectedId = cookieStore.get('reliant_workspace')?.value;
   let isImpersonating = false;
   if (globalAdmin) {
-    const cookieStore = await cookies();
-    const selectedId = cookieStore.get('reliant_workspace')?.value;
     const previewId = cookieStore.get('reliant_client_preview')?.value;
     if (selectedId) {
       const [selected] = await db
@@ -174,9 +119,29 @@ export async function getWorkspaceContext() {
     } else {
       membership = { ...globalAdmin, role: 'super_admin' };
     }
+  } else if (membership && selectedId) {
+    const [selectedMembership] = await db
+      .select({
+        workspaceId: workspaceMembers.workspaceId,
+        workspaceName: workspaces.name,
+        role: workspaceMembers.role,
+      })
+      .from(workspaceMembers)
+      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
+      .where(
+        and(
+          eq(workspaceMembers.userId, userId),
+          eq(workspaceMembers.workspaceId, selectedId),
+          eq(workspaceMembers.status, 'active'),
+          eq(workspaces.status, 'active'),
+        ),
+      )
+      .limit(1);
+    if (selectedMembership) membership = selectedMembership;
   }
 
   if (!membership) {
+    if (!configuredSuperAdmin) return null;
     const workspaceId = `workspace:${auth.userId}`;
     const identity = auth.fullName?.trim() || auth.email.split('@')[0];
     await db
@@ -205,21 +170,26 @@ export async function getWorkspaceContext() {
     membership = {
       workspaceId,
       workspaceName: `${identity}'s Workspace`,
-      role: configuredSuperAdmin ? 'super_admin' : 'client_admin',
+      role: 'super_admin',
     };
 
-    if (membership.role === 'super_admin') {
-      await db
-        .update(workspaceMembers)
-        .set({ role: 'super_admin', updatedAt: now })
-        .where(
-          and(
-            eq(workspaceMembers.userId, userId),
-            eq(workspaceMembers.workspaceId, workspaceId),
-          ),
-        );
-    }
+    await db
+      .update(workspaceMembers)
+      .set({ role: 'super_admin', updatedAt: now })
+      .where(
+        and(
+          eq(workspaceMembers.userId, userId),
+          eq(workspaceMembers.workspaceId, workspaceId),
+        ),
+      );
   }
 
-  return { db, auth, userId, isImpersonating, ...membership };
+  return {
+    db,
+    auth,
+    userId,
+    isImpersonating,
+    isPlatformAdmin: Boolean(globalAdmin) || configuredSuperAdmin,
+    ...membership,
+  };
 }

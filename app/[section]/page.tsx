@@ -1,6 +1,7 @@
 import SectionView from '@/components/section-view';
 import { redirect } from 'next/navigation';
 import { requireChatGPTUser } from '@/app/chatgpt-auth';
+import { getWorkspaceContext } from '@/lib/workspace-context';
 export const dynamic = 'force-dynamic';
 const allowed = new Set([
   'dashboard',
@@ -23,6 +24,7 @@ export default async function SectionPage({
 }) {
   const { section } = await params;
   await requireChatGPTUser(`/${section}`);
+  if (!(await getWorkspaceContext())) redirect('/unauthorized');
   if (section === 'dashboard') redirect('/dashboard');
   return <SectionView section={allowed.has(section) ? section : 'prospects'} />;
 }

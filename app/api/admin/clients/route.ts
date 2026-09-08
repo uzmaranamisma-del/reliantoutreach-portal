@@ -7,11 +7,7 @@ import {
   workspaces,
 } from '@/db/schema';
 import { getWorkspaceContext } from '@/lib/workspace-context';
-import {
-  deliverWorkspaceInvitation,
-  InvitationDeliveryError,
-} from '@/lib/invitation-email';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -151,17 +147,6 @@ export async function POST(request: Request) {
     return json({ error: 'Enter a valid monthly email allowance.' }, 400);
   if (!Number.isFinite(price) || price < 0 || price > 10000000)
     return json({ error: 'Enter a valid package price.' }, 400);
-  const [emailIntegration] = await context.db
-    .select({ credentialsCiphertext: integrations.credentialsCiphertext })
-    .from(integrations)
-    .where(
-      and(
-        eq(integrations.kind, 'invitation_email'),
-        eq(integrations.status, 'configured'),
-      ),
-    )
-    .orderBy(desc(integrations.updatedAt))
-    .limit(1);
   const now = new Date();
   const id = crypto.randomUUID();
   const slug = `${
@@ -188,63 +173,17 @@ export async function POST(request: Request) {
     createdAt: now,
     updatedAt: now,
   });
-  const invitationId = crypto.randomUUID();
-  await context.db.insert(workspaceInvitations).values({
-    id: invitationId,
-    workspaceId: id,
-    email: clientEmail,
-    role: 'client_admin',
-    tokenHash: crypto.randomUUID(),
-    status: 'pending',
-    invitedByUserId: context.userId,
-    expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-    createdAt: now,
-    updatedAt: now,
-  });
-  if (!emailIntegration)
-    return json(
-      {
-        created: true,
-        id,
-        invitationDelivered: false,
-        warning:
-          'Workspace created and invitation prepared. Connect invitation email delivery in Settings, then resend it from Team.',
-      },
-      201,
-    );
-  try {
-    await deliverWorkspaceInvitation({
-      credentialsCiphertext: emailIntegration.credentialsCiphertext,
-      email: clientEmail,
-      invitationId,
-      portalUrl: new URL(request.url).origin,
-      role: 'client_admin',
-      workspaceName: name,
-    });
-    return json({ created: true, id, invitationDelivered: true }, 201);
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        event: 'client_invitation_delivery_failed',
-        code:
-          error instanceof InvitationDeliveryError
-            ? error.providerCode || `HTTP_${error.status}`
-            : error instanceof Error
-              ? error.name
-              : 'UNKNOWN',
-      }),
-    );
-    return json(
-      {
-        created: true,
-        id,
-        invitationDelivered: false,
-        warning:
-          'Workspace created, but the invitation email could not be delivered. You can resend it from Team.',
-      },
-      201,
-    );
-  }
+  return json(
+    {
+      created: true,
+      id,
+      name,
+      clientEmail,
+      message:
+        'Workspace created. Connect and synchronize its outreach data before inviting the client.',
+    },
+    201,
+  );
 }
 
 export async function PATCH(request: Request) {
