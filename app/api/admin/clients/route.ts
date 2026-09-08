@@ -7,7 +7,8 @@ import {
   workspaces,
 } from '@/db/schema';
 import { getWorkspaceContext } from '@/lib/workspace-context';
-import { and, count, eq } from 'drizzle-orm';
+import { deliverWorkspaceInvitation } from '@/lib/invitation-email';
+import { and, count, desc, eq } from 'drizzle-orm';
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -80,6 +81,7 @@ export async function GET() {
       return {
         id: workspace.id,
         name: workspace.name,
+        primaryContactEmail: workspace.primaryContactEmail,
         slug: workspace.slug,
         status: workspace.status,
         packageName: workspace.packageName,
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
     return json({ error: 'Request could not be verified' }, 403);
   let body: {
     name?: string;
+    clientEmail?: string;
     packageName?: string;
     monthlyCredits?: number;
     monthlyEmailCapacity?: number;
@@ -123,8 +126,11 @@ export async function POST(request: Request) {
     return json({ error: 'Invalid request' }, 400);
   }
   const name = body.name?.trim();
+  const clientEmail = body.clientEmail?.trim().toLowerCase() ?? '';
   if (!name || name.length > 120)
     return json({ error: 'Enter a client name.' }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail))
+    return json({ error: 'Enter a valid client email address.' }, 400);
   const monthlyCredits = Number(body.monthlyCredits ?? 10000);
   const monthlyEmailCapacity = Number(body.monthlyEmailCapacity ?? 10000);
   const price = Number(body.price ?? 0);
@@ -142,6 +148,17 @@ export async function POST(request: Request) {
     return json({ error: 'Enter a valid monthly email allowance.' }, 400);
   if (!Number.isFinite(price) || price < 0 || price > 10000000)
     return json({ error: 'Enter a valid package price.' }, 400);
+  const [emailIntegration] = await context.db
+    .select({ credentialsCiphertext: integrations.credentialsCiphertext })
+    .from(integrations)
+    .where(
+      and(
+        eq(integrations.kind, 'invitation_email'),
+        eq(integrations.status, 'connected'),
+      ),
+    )
+    .orderBy(desc(integrations.updatedAt))
+    .limit(1);
   const now = new Date();
   const id = crypto.randomUUID();
   const slug = `${
@@ -151,25 +168,69 @@ export async function POST(request: Request) {
       .replace(/(^-|-$)/g, '')
       .slice(0, 45) || 'client'
   }-${id.slice(0, 6)}`;
-  await context.db
-    .insert(workspaces)
-    .values({
-      id,
-      name,
-      slug,
-      status: 'active',
-      packageName: body.packageName?.trim() || 'Launch',
-      monthlyCredits,
-      monthlyEmailCapacity,
-      priceCents: Math.round(price * 100),
-      renewalDate: body.renewalDate
-        ? new Date(`${body.renewalDate}T00:00:00Z`)
-        : null,
-      accountManager: body.accountManager?.trim() || null,
-      createdAt: now,
-      updatedAt: now,
+  await context.db.insert(workspaces).values({
+    id,
+    name,
+    primaryContactEmail: clientEmail,
+    slug,
+    status: 'active',
+    packageName: body.packageName?.trim() || 'Launch',
+    monthlyCredits,
+    monthlyEmailCapacity,
+    priceCents: Math.round(price * 100),
+    renewalDate: body.renewalDate
+      ? new Date(`${body.renewalDate}T00:00:00Z`)
+      : null,
+    accountManager: body.accountManager?.trim() || null,
+    createdAt: now,
+    updatedAt: now,
+  });
+  const invitationId = crypto.randomUUID();
+  await context.db.insert(workspaceInvitations).values({
+    id: invitationId,
+    workspaceId: id,
+    email: clientEmail,
+    role: 'client_admin',
+    tokenHash: crypto.randomUUID(),
+    status: 'pending',
+    invitedByUserId: context.userId,
+    expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+    createdAt: now,
+    updatedAt: now,
+  });
+  if (!emailIntegration)
+    return json(
+      {
+        created: true,
+        id,
+        invitationDelivered: false,
+        warning:
+          'Workspace created and invitation prepared. Connect invitation email delivery in Settings, then resend it from Team.',
+      },
+      201,
+    );
+  try {
+    await deliverWorkspaceInvitation({
+      credentialsCiphertext: emailIntegration.credentialsCiphertext,
+      email: clientEmail,
+      invitationId,
+      portalUrl: new URL(request.url).origin,
+      role: 'client_admin',
+      workspaceName: name,
     });
-  return json({ created: true, id });
+    return json({ created: true, id, invitationDelivered: true }, 201);
+  } catch {
+    return json(
+      {
+        created: true,
+        id,
+        invitationDelivered: false,
+        warning:
+          'Workspace created, but the invitation email could not be delivered. You can resend it from Team.',
+      },
+      201,
+    );
+  }
 }
 
 export async function PATCH(request: Request) {
@@ -182,6 +243,7 @@ export async function PATCH(request: Request) {
   let body: {
     id?: string;
     status?: string;
+    primaryContactEmail?: string;
     packageName?: string;
     monthlyCredits?: number;
     monthlyEmailCapacity?: number;
@@ -198,6 +260,12 @@ export async function PATCH(request: Request) {
     return json({ error: 'Invalid client update.' }, 400);
   const values: Record<string, unknown> = { updatedAt: new Date() };
   if (body.status) values.status = body.status;
+  if (body.primaryContactEmail !== undefined) {
+    const email = body.primaryContactEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return json({ error: 'Enter a valid client email address.' }, 400);
+    values.primaryContactEmail = email;
+  }
   if (body.packageName)
     values.packageName = body.packageName.trim().slice(0, 80);
   if (body.monthlyCredits !== undefined)

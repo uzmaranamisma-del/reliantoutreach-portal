@@ -24,6 +24,7 @@ export const users = sqliteTable('users', {
 export const workspaces = sqliteTable('workspaces', {
   id: id(),
   name: text('name').notNull(),
+  primaryContactEmail: text('primary_contact_email'),
   slug: text('slug').notNull().unique(),
   status: text('status').notNull().default('trial'),
   packageName: text('package_name').notNull().default('Launch'),

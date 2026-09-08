@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 type Client = {
   id: string;
   name: string;
+  primaryContactEmail: string | null;
   slug: string;
   status: string;
   packageName: string;
@@ -32,6 +33,7 @@ type Client = {
 };
 const emptyForm = {
   name: '',
+  clientEmail: '',
   packageName: 'Launch',
   monthlyCredits: 10000,
   monthlyEmailCapacity: 10000,
@@ -47,6 +49,7 @@ export default function ClientManager() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [form, setForm] = useState(emptyForm);
   const load = useCallback(async () => {
     const response = await fetch('/api/admin/clients', { cache: 'no-store' });
@@ -88,15 +91,22 @@ export default function ClientManager() {
     event.preventDefault();
     setSaving(true);
     setError('');
+    setNotice('');
     const response = await fetch('/api/admin/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
-    const result = (await response.json()) as { error?: string };
+    const result = (await response.json()) as {
+      error?: string;
+      warning?: string;
+    };
     if (response.ok) {
       setOpen(false);
       setForm({ ...emptyForm });
+      setNotice(
+        result.warning || 'Client workspace created and invitation email sent.',
+      );
       await load();
     } else setError(result.error || 'Client could not be created.');
     setSaving(false);
@@ -152,12 +162,14 @@ export default function ClientManager() {
         </button>
       </div>
       {error && <p className="domain-error">{error}</p>}
+      {notice && <p className="domain-success">{notice}</p>}
       <section className="client-table-card">
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
                 <th>Client</th>
+                <th>Client email</th>
                 <th>Status</th>
                 <th>Package</th>
                 <th>Monthly credits</th>
@@ -180,6 +192,9 @@ export default function ClientManager() {
                       Onboarded{' '}
                       {new Date(client.createdAt).toLocaleDateString()}
                     </small>
+                  </td>
+                  <td>
+                    {client.primaryContactEmail || client.pendingInvite || '—'}
                   </td>
                   <td>
                     <span className={`client-status ${client.status}`}>
@@ -247,18 +262,33 @@ export default function ClientManager() {
                 <X />
               </button>
             </header>
-            <label>
-              Client name
-              <input
-                required
-                maxLength={120}
-                value={form.name}
-                onChange={(event) =>
-                  setForm({ ...form, name: event.target.value })
-                }
-                placeholder="Acme Automation"
-              />
-            </label>
+            <div className="editor-grid">
+              <label>
+                Client name
+                <input
+                  required
+                  maxLength={120}
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm({ ...form, name: event.target.value })
+                  }
+                  placeholder="Acme Automation"
+                />
+              </label>
+              <label>
+                Client email address
+                <input
+                  required
+                  type="email"
+                  autoComplete="email"
+                  value={form.clientEmail}
+                  onChange={(event) =>
+                    setForm({ ...form, clientEmail: event.target.value })
+                  }
+                  placeholder="client@company.com"
+                />
+              </label>
+            </div>
             <div className="editor-grid">
               <label>
                 Package
@@ -338,9 +368,8 @@ export default function ClientManager() {
               />
             </label>
             <p>
-              After creating the workspace, open it to connect the client API
-              and run the first synchronization. Then invite the client from
-              Team.
+              The client will receive a Client Admin invitation as soon as the
+              workspace is created.
             </p>
             <footer>
               <button
@@ -351,7 +380,7 @@ export default function ClientManager() {
                 Cancel
               </button>
               <button className="primary-action" disabled={saving}>
-                {saving ? 'Creating…' : 'Create workspace'}
+                {saving ? 'Creating & inviting…' : 'Create workspace & invite'}
               </button>
             </footer>
           </form>

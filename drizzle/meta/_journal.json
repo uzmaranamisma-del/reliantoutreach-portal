@@ -64,6 +64,13 @@
       "when": 1788870346254,
       "tag": "0008_numerous_adam_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1788871034313,
+      "tag": "0009_ancient_beast",
+      "breakpoints": true
     }
   ]
 }
