@@ -9,6 +9,16 @@ import {
 import { and, eq, gt } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
+const LOCAL_SITE_OWNER_EMAIL = 'seedy@sites.test';
+
+function isConfiguredSuperAdmin(email: string) {
+  const configured = (process.env.SUPER_ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return email.toLowerCase() === LOCAL_SITE_OWNER_EMAIL || configured.includes(email.toLowerCase());
+}
+
 export async function getWorkspaceContext() {
   const auth = await getChatGPTUser();
   if (!auth) return null;
@@ -51,6 +61,21 @@ export async function getWorkspaceContext() {
       ),
     )
     .limit(1);
+
+  // The Sites development identity represents the portal owner. In production,
+  // SUPER_ADMIN_EMAILS explicitly identifies ReliantOutreach operators.
+  if (membership && isConfiguredSuperAdmin(auth.email) && membership.role !== 'super_admin') {
+    await db
+      .update(workspaceMembers)
+      .set({ role: 'super_admin', updatedAt: now })
+      .where(
+        and(
+          eq(workspaceMembers.userId, userId),
+          eq(workspaceMembers.workspaceId, membership.workspaceId),
+        ),
+      );
+    membership = { ...membership, role: 'super_admin' };
+  }
 
   const [existingSuperAdmin] = await db
     .select({ id: workspaceMembers.id })
@@ -149,8 +174,20 @@ export async function getWorkspaceContext() {
     membership = {
       workspaceId,
       workspaceName: `${identity}'s Workspace`,
-      role: 'client_admin',
+      role: isConfiguredSuperAdmin(auth.email) ? 'super_admin' : 'client_admin',
     };
+
+    if (membership.role === 'super_admin') {
+      await db
+        .update(workspaceMembers)
+        .set({ role: 'super_admin', updatedAt: now })
+        .where(
+          and(
+            eq(workspaceMembers.userId, userId),
+            eq(workspaceMembers.workspaceId, workspaceId),
+          ),
+        );
+    }
   }
 
   return { db, auth, userId, ...membership };

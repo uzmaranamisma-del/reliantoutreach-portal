@@ -131,6 +131,9 @@ export default function Dashboard() {
         workspaceName: data.workspace.name,
         role: data.workspace.role,
       });
+      if (data.workspace.role === 'super_admin') {
+        window.location.replace('/clients');
+      }
     });
   }, []);
   useEffect(() => {
