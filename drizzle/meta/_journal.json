@@ -50,6 +50,13 @@
       "when": 1788702092273,
       "tag": "0006_sour_black_widow",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788805095888,
+      "tag": "0007_silent_phil_sheldon",
+      "breakpoints": true
     }
   ]
 }

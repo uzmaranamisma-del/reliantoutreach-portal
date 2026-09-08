@@ -1,6 +1,7 @@
 'use client';
 import {
   Bell,
+  Building2,
   CalendarDays,
   ChevronDown,
   CircleHelp,
@@ -33,7 +34,9 @@ import {
 import IntegrationSettings from '@/components/integration-settings';
 import DomainDashboard from '@/components/domain-dashboard';
 import TeamManager from '@/components/team-manager';
+import ClientManager from '@/components/client-manager';
 const nav = [
+  [Building2, 'Clients', 'clients'],
   [LayoutDashboard, 'Dashboard', 'dashboard'],
   [Users, 'Prospects', 'prospects'],
   [Target, 'Campaigns', 'campaigns'],
@@ -56,6 +59,12 @@ const content: Record<
     rows: string[][];
   }
 > = {
+  clients: {
+    title: 'Clients',
+    subtitle: 'Onboard, configure, and monitor every client workspace.',
+    headers: [],
+    rows: [],
+  },
   prospects: {
     title: 'Prospects',
     subtitle: 'Manage contacts across your outreach operation.',
@@ -567,7 +576,9 @@ export default function SectionView({ section }: { section: string }) {
               </div>
             )}
           </div>
-          {section === 'team' ? (
+          {section === 'clients' ? (
+            session.role === 'super_admin' ? <ClientManager /> : <div className="table-empty">Super Admin access required.</div>
+          ) : section === 'team' ? (
             <TeamManager />
           ) : section === 'settings' ? (
             <IntegrationSettings />
@@ -779,17 +790,17 @@ export function Aside({
           <span>OUTREACH</span>
         </div>
       </a>
-      <button className="workspace" aria-label="Switch workspace">
+      <a className="workspace" aria-label="Switch workspace" href={session.role === 'super_admin' ? '/clients' : '/dashboard'}>
         <span className="workspace-logo">AA</span>
         <span>
           <b>{session.workspaceName}</b>
           <small>Private client workspace</small>
         </span>
         <ChevronDown size={15} />
-      </button>
+      </a>
       <nav aria-label="Main navigation">
         <p className="nav-label">WORKSPACE</p>
-        {nav.map(([Icon, label, path]) => (
+        {nav.filter(([, , path]) => path !== 'clients' || session.role === 'super_admin').map(([Icon, label, path]) => (
           <a
             href={`/${path}`}
             className={path === active ? 'active' : ''}

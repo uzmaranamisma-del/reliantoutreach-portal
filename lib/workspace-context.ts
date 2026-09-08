@@ -7,6 +7,7 @@ import {
   workspaces,
 } from '@/db/schema';
 import { and, eq, gt } from 'drizzle-orm';
+import { cookies } from 'next/headers';
 
 export async function getWorkspaceContext() {
   const auth = await getChatGPTUser();
@@ -50,6 +51,29 @@ export async function getWorkspaceContext() {
       ),
     )
     .limit(1);
+
+  const [existingSuperAdmin] = await db
+    .select({ id: workspaceMembers.id })
+    .from(workspaceMembers)
+    .where(eq(workspaceMembers.role, 'super_admin'))
+    .limit(1);
+  if (!existingSuperAdmin && membership?.role === 'client_admin') {
+    await db.update(workspaceMembers).set({ role: 'super_admin', updatedAt: now }).where(and(eq(workspaceMembers.userId, userId), eq(workspaceMembers.workspaceId, membership.workspaceId)));
+    membership = { ...membership, role: 'super_admin' };
+  }
+
+  const [globalAdmin] = await db
+    .select({ role: workspaceMembers.role })
+    .from(workspaceMembers)
+    .where(and(eq(workspaceMembers.userId, userId), eq(workspaceMembers.role, 'super_admin'), eq(workspaceMembers.status, 'active')))
+    .limit(1);
+  if (globalAdmin) {
+    const selectedId = (await cookies()).get('reliant_workspace')?.value;
+    if (selectedId) {
+      const [selected] = await db.select({ workspaceId: workspaces.id, workspaceName: workspaces.name }).from(workspaces).where(and(eq(workspaces.id, selectedId), eq(workspaces.status, 'active'))).limit(1);
+      if (selected) membership = { ...selected, role: 'super_admin' };
+    }
+  }
 
   if (!membership) {
     const [invitation] = await db

@@ -14,6 +14,7 @@ const allowed = new Set([
   'files',
   'team',
   'settings',
+  'clients',
 ]);
 export default async function SectionPage({
   params,

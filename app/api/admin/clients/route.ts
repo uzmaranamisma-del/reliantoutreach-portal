@@ -1,0 +1,63 @@
+import { campaigns, integrations, prospects, workspaceInvitations, workspaceMembers, workspaces } from '@/db/schema';
+import { getWorkspaceContext } from '@/lib/workspace-context';
+import { and, count, eq } from 'drizzle-orm';
+
+const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+const allowedStatuses = new Set(['trial', 'active', 'paused', 'cancelled']);
+function verifyOrigin(request: Request) { const origin = request.headers.get('origin'); return !origin || origin === new URL(request.url).origin; }
+
+export async function GET() {
+  const context = await getWorkspaceContext();
+  if (!context) return json({ error: 'Authentication required' }, 401);
+  if (context.role !== 'super_admin') return json({ error: 'Super Admin access required' }, 403);
+  const rows = await context.db.select().from(workspaces).orderBy(workspaces.createdAt).limit(500);
+  const clients = await Promise.all(rows.map(async (workspace) => {
+    const [[campaignTotal], [prospectTotal], [memberTotal], [connection], [pendingInvite]] = await Promise.all([
+      context.db.select({ value: count() }).from(campaigns).where(eq(campaigns.workspaceId, workspace.id)),
+      context.db.select({ value: count() }).from(prospects).where(eq(prospects.workspaceId, workspace.id)),
+      context.db.select({ value: count() }).from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, workspace.id), eq(workspaceMembers.status, 'active'))),
+      context.db.select({ status: integrations.status, lastSyncedAt: integrations.lastSyncedAt }).from(integrations).where(and(eq(integrations.workspaceId, workspace.id), eq(integrations.kind, 'outreach'))).limit(1),
+      context.db.select({ email: workspaceInvitations.email }).from(workspaceInvitations).where(and(eq(workspaceInvitations.workspaceId, workspace.id), eq(workspaceInvitations.status, 'pending'))).limit(1),
+    ]);
+    return { id: workspace.id, name: workspace.name, slug: workspace.slug, status: workspace.status, packageName: workspace.packageName, monthlyCredits: workspace.monthlyCredits, priceCents: workspace.priceCents, renewalDate: workspace.renewalDate?.toISOString() ?? null, accountManager: workspace.accountManager, campaigns: campaignTotal.value, prospects: prospectTotal.value, members: memberTotal.value, integrationStatus: connection?.status ?? 'not_connected', lastSyncedAt: connection?.lastSyncedAt?.toISOString() ?? null, pendingInvite: pendingInvite?.email ?? null, createdAt: workspace.createdAt.toISOString() };
+  }));
+  return json({ currentWorkspaceId: context.workspaceId, clients });
+}
+
+export async function POST(request: Request) {
+  const context = await getWorkspaceContext();
+  if (!context) return json({ error: 'Authentication required' }, 401);
+  if (context.role !== 'super_admin') return json({ error: 'Super Admin access required' }, 403);
+  if (!verifyOrigin(request)) return json({ error: 'Request could not be verified' }, 403);
+  let body: { name?: string; packageName?: string; monthlyCredits?: number; price?: number; renewalDate?: string; accountManager?: string };
+  try { body = await request.json(); } catch { return json({ error: 'Invalid request' }, 400); }
+  const name = body.name?.trim();
+  if (!name || name.length > 120) return json({ error: 'Enter a client name.' }, 400);
+  const monthlyCredits = Number(body.monthlyCredits ?? 10000);
+  const price = Number(body.price ?? 0);
+  if (!Number.isInteger(monthlyCredits) || monthlyCredits < 0 || monthlyCredits > 100000000) return json({ error: 'Enter valid monthly credits.' }, 400);
+  if (!Number.isFinite(price) || price < 0 || price > 10000000) return json({ error: 'Enter a valid package price.' }, 400);
+  const now = new Date(); const id = crypto.randomUUID();
+  const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 45) || 'client'}-${id.slice(0, 6)}`;
+  await context.db.insert(workspaces).values({ id, name, slug, status: 'active', packageName: body.packageName?.trim() || 'Launch', monthlyCredits, priceCents: Math.round(price * 100), renewalDate: body.renewalDate ? new Date(`${body.renewalDate}T00:00:00Z`) : null, accountManager: body.accountManager?.trim() || null, createdAt: now, updatedAt: now });
+  return json({ created: true, id });
+}
+
+export async function PATCH(request: Request) {
+  const context = await getWorkspaceContext();
+  if (!context) return json({ error: 'Authentication required' }, 401);
+  if (context.role !== 'super_admin') return json({ error: 'Super Admin access required' }, 403);
+  if (!verifyOrigin(request)) return json({ error: 'Request could not be verified' }, 403);
+  let body: { id?: string; status?: string; packageName?: string; monthlyCredits?: number; price?: number; renewalDate?: string | null; accountManager?: string };
+  try { body = await request.json(); } catch { return json({ error: 'Invalid request' }, 400); }
+  if (!body.id || (body.status && !allowedStatuses.has(body.status))) return json({ error: 'Invalid client update.' }, 400);
+  const values: Record<string, unknown> = { updatedAt: new Date() };
+  if (body.status) values.status = body.status;
+  if (body.packageName) values.packageName = body.packageName.trim().slice(0, 80);
+  if (body.monthlyCredits !== undefined) values.monthlyCredits = Math.max(0, Math.min(100000000, Math.round(body.monthlyCredits)));
+  if (body.price !== undefined) values.priceCents = Math.max(0, Math.min(1000000000, Math.round(body.price * 100)));
+  if (body.accountManager !== undefined) values.accountManager = body.accountManager.trim().slice(0, 120) || null;
+  if (body.renewalDate !== undefined) values.renewalDate = body.renewalDate ? new Date(`${body.renewalDate}T00:00:00Z`) : null;
+  const updated = await context.db.update(workspaces).set(values).where(eq(workspaces.id, body.id)).returning({ id: workspaces.id });
+  return updated.length ? json({ updated: true }) : json({ error: 'Client not found.' }, 404);
+}

@@ -1,4 +1,4 @@
-import { campaigns, campaignSteps, mailboxes } from '@/db/schema';
+import { campaigns, campaignSteps, mailboxes, workspaces } from '@/db/schema';
 import { getWorkspaceContext } from '@/lib/workspace-context';
 import { and, asc, eq } from 'drizzle-orm';
 
@@ -20,6 +20,7 @@ export async function GET(request: Request) {
       .where(eq(mailboxes.workspaceId, workspaceId))
       .limit(1000),
   ]);
+  const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
   const selectedCampaign = requestedCampaignId
     ? (campaignRows.find((row) => row.id === requestedCampaignId) ?? null)
     : null;
@@ -96,6 +97,7 @@ export async function GET(request: Request) {
           }
         : null,
       lastUpdatedAt: latest ? new Date(latest).toISOString() : null,
+      package: workspace ? { name: workspace.packageName, monthlyCredits: workspace.monthlyCredits, priceCents: workspace.priceCents, renewalDate: workspace.renewalDate?.toISOString() ?? null, usedCredits: campaignRows.reduce((sum, row) => sum + row.sentCount, 0) } : null,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 const nav = [
+  [Building2, 'Clients'],
   [LayoutDashboard, 'Dashboard'],
   [Users, 'Prospects'],
   [Target, 'Campaigns'],
@@ -76,6 +77,7 @@ export default function Dashboard() {
   } | null>(null);
   const [lastUpdated, setLastUpdated] = useState('Demo data');
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+  const [activePackage, setActivePackage] = useState<{ name: string; monthlyCredits: number; priceCents: number; renewalDate: string | null; usedCredits: number } | null>(null);
   const [campaignSettings, setCampaignSettings] = useState<{
     initialEmail: {
       subject: string | null;
@@ -159,6 +161,7 @@ export default function Dashboard() {
           replyRate: number;
         }>;
         lastUpdatedAt: string | null;
+        package: { name: string; monthlyCredits: number; priceCents: number; renewalDate: string | null; usedCredits: number } | null;
         selectedCampaign: {
           id: string;
           name: string;
@@ -200,6 +203,7 @@ export default function Dashboard() {
           }>;
         } | null;
       };
+      setActivePackage(data.package);
       if (!data.lastUpdatedAt) return;
       const format = new Intl.NumberFormat();
       setLiveTotals({
@@ -335,7 +339,7 @@ export default function Dashboard() {
         </button>
         <nav aria-label="Main navigation">
           <p className="nav-label">WORKSPACE</p>
-          {nav.map(([Icon, label]) => (
+          {nav.filter(([, label]) => label !== 'Clients' || session.role === 'super_admin').map(([Icon, label]) => (
             <a
               href={`/${label.toLowerCase().replace(' ', '-')}`}
               className={label === 'Dashboard' ? 'active' : ''}
@@ -590,27 +594,27 @@ export default function Dashboard() {
               </span>
               <div>
                 <p>ACTIVE PACKAGE</p>
-                <h2>Growth Outreach</h2>
-                <span>Renews October 4, 2026</span>
+                <h2>{activePackage?.name || 'Package not assigned'}</h2>
+                <span>{activePackage?.renewalDate ? `Renews ${new Date(activePackage.renewalDate).toLocaleDateString()}` : 'Renewal date not set'}</span>
               </div>
             </div>
             <div className="package-price">
               <span>Monthly price</span>
               <strong>
-                $2,500<small>/month</small>
+                {activePackage?.priceCents ? `$${(activePackage.priceCents / 100).toLocaleString()}` : '—'}<small>/month</small>
               </strong>
             </div>
             <div className="package-credits">
               <div>
                 <span>Monthly credits</span>
-                <b>50,000</b>
+                <b>{(activePackage?.monthlyCredits ?? 0).toLocaleString()}</b>
               </div>
               <div className="credits-track">
-                <i style={{ width: '65.7%' }} />
+                <i style={{ width: `${activePackage?.monthlyCredits ? Math.min(100, activePackage.usedCredits / activePackage.monthlyCredits * 100) : 0}%` }} />
               </div>
               <p>
-                <b>32,845 used</b>
-                <span>17,155 remaining</span>
+                <b>{(activePackage?.usedCredits ?? 0).toLocaleString()} used</b>
+                <span>{Math.max(0, (activePackage?.monthlyCredits ?? 0) - (activePackage?.usedCredits ?? 0)).toLocaleString()} remaining</span>
               </p>
             </div>
             <a href="/settings">View package details →</a>
