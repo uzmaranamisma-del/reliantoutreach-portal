@@ -1,12 +1,12 @@
 import { integrations } from '@/db/schema';
-import { encryptSecret } from '@/lib/crypto';
+import { encryptSecret, EncryptionConfigurationError } from '@/lib/crypto';
 import { getWorkspaceContext } from '@/lib/workspace-context';
 import { and, eq } from 'drizzle-orm';
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
-export async function GET() {
+async function getConnection() {
   const ctx = await getWorkspaceContext();
   if (!ctx) return json({ error: 'Authentication required.' }, 401);
   const [record] = await ctx.db
@@ -26,7 +26,7 @@ export async function GET() {
   return json({ connection: record ?? null });
 }
 
-export async function POST(request: Request) {
+async function saveConnection(request: Request) {
   const ctx = await getWorkspaceContext();
   if (!ctx) return json({ error: 'Authentication required.' }, 401);
   if (!['super_admin', 'account_manager', 'client_admin'].includes(ctx.role))
@@ -81,4 +81,34 @@ export async function POST(request: Request) {
       updatedAt: now,
     },
   });
+}
+
+async function guarded(operation: () => Promise<Response>) {
+  try {
+    return await operation();
+  } catch (error) {
+    const configurationError = error instanceof EncryptionConfigurationError;
+    // Never log the request body, credentials, or raw database errors.
+    console.error(
+      JSON.stringify({
+        event: 'invitation_email_settings_failed',
+        code: configurationError ? 'ENCRYPTION_UNAVAILABLE' : 'SAVE_FAILED',
+      }),
+    );
+    return json(
+      {
+        error: configurationError
+          ? 'Secure credential storage is not configured. Contact your portal administrator.'
+          : 'Email settings are temporarily unavailable. Please try again.',
+      },
+      configurationError ? 503 : 500,
+    );
+  }
+}
+
+export async function GET() {
+  return guarded(getConnection);
+}
+export async function POST(request: Request) {
+  return guarded(() => saveConnection(request));
 }

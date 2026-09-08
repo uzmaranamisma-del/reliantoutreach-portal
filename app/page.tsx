@@ -77,7 +77,13 @@ export default function Dashboard() {
   } | null>(null);
   const [lastUpdated, setLastUpdated] = useState('Demo data');
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
-  const [activePackage, setActivePackage] = useState<{ name: string; monthlyCredits: number; priceCents: number; renewalDate: string | null; usedCredits: number } | null>(null);
+  const [activePackage, setActivePackage] = useState<{
+    name: string;
+    monthlyCredits: number;
+    priceCents: number;
+    renewalDate: string | null;
+    usedCredits: number;
+  } | null>(null);
   const [campaignSettings, setCampaignSettings] = useState<{
     initialEmail: {
       subject: string | null;
@@ -131,7 +137,10 @@ export default function Dashboard() {
         workspaceName: data.workspace.name,
         role: data.workspace.role,
       });
-      if (data.workspace.role === 'super_admin') {
+      if (
+        data.workspace.role === 'super_admin' &&
+        window.location.pathname === '/'
+      ) {
         window.location.replace('/clients');
       }
     });
@@ -164,7 +173,13 @@ export default function Dashboard() {
           replyRate: number;
         }>;
         lastUpdatedAt: string | null;
-        package: { name: string; monthlyCredits: number; priceCents: number; renewalDate: string | null; usedCredits: number } | null;
+        package: {
+          name: string;
+          monthlyCredits: number;
+          priceCents: number;
+          renewalDate: string | null;
+          usedCredits: number;
+        } | null;
         selectedCampaign: {
           id: string;
           name: string;
@@ -342,17 +357,22 @@ export default function Dashboard() {
         </button>
         <nav aria-label="Main navigation">
           <p className="nav-label">WORKSPACE</p>
-          {nav.filter(([, label]) => label !== 'Clients' || session.role === 'super_admin').map(([Icon, label]) => (
-            <a
-              href={`/${label.toLowerCase().replace(' ', '-')}`}
-              className={label === 'Dashboard' ? 'active' : ''}
-              key={label}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-              {label === 'Replies' && <em>12</em>}
-            </a>
-          ))}
+          {nav
+            .filter(
+              ([, label]) =>
+                label !== 'Clients' || session.role === 'super_admin',
+            )
+            .map(([Icon, label]) => (
+              <a
+                href={`/${label.toLowerCase().replace(' ', '-')}`}
+                className={label === 'Dashboard' ? 'active' : ''}
+                key={label}
+              >
+                <Icon size={18} />
+                <span>{label}</span>
+                {label === 'Replies' && <em>12</em>}
+              </a>
+            ))}
         </nav>
         <div className="sidebar-foot">
           <a href="mailto:support@reliantoutreach.com">
@@ -598,13 +618,20 @@ export default function Dashboard() {
               <div>
                 <p>ACTIVE PACKAGE</p>
                 <h2>{activePackage?.name || 'Package not assigned'}</h2>
-                <span>{activePackage?.renewalDate ? `Renews ${new Date(activePackage.renewalDate).toLocaleDateString()}` : 'Renewal date not set'}</span>
+                <span>
+                  {activePackage?.renewalDate
+                    ? `Renews ${new Date(activePackage.renewalDate).toLocaleDateString()}`
+                    : 'Renewal date not set'}
+                </span>
               </div>
             </div>
             <div className="package-price">
               <span>Monthly price</span>
               <strong>
-                {activePackage?.priceCents ? `$${(activePackage.priceCents / 100).toLocaleString()}` : '—'}<small>/month</small>
+                {activePackage?.priceCents
+                  ? `$${(activePackage.priceCents / 100).toLocaleString()}`
+                  : '—'}
+                <small>/month</small>
               </strong>
             </div>
             <div className="package-credits">
@@ -613,11 +640,22 @@ export default function Dashboard() {
                 <b>{(activePackage?.monthlyCredits ?? 0).toLocaleString()}</b>
               </div>
               <div className="credits-track">
-                <i style={{ width: `${activePackage?.monthlyCredits ? Math.min(100, activePackage.usedCredits / activePackage.monthlyCredits * 100) : 0}%` }} />
+                <i
+                  style={{
+                    width: `${activePackage?.monthlyCredits ? Math.min(100, (activePackage.usedCredits / activePackage.monthlyCredits) * 100) : 0}%`,
+                  }}
+                />
               </div>
               <p>
                 <b>{(activePackage?.usedCredits ?? 0).toLocaleString()} used</b>
-                <span>{Math.max(0, (activePackage?.monthlyCredits ?? 0) - (activePackage?.usedCredits ?? 0)).toLocaleString()} remaining</span>
+                <span>
+                  {Math.max(
+                    0,
+                    (activePackage?.monthlyCredits ?? 0) -
+                      (activePackage?.usedCredits ?? 0),
+                  ).toLocaleString()}{' '}
+                  remaining
+                </span>
               </p>
             </div>
             <a href="/settings">View package details →</a>

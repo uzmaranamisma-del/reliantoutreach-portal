@@ -11,7 +11,10 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt",
-    "db:generate": "drizzle-kit generate"
+    "test": "node --test scripts/test-email-settings.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:local:migrate": "wrangler d1 migrations apply DB --local --config wrangler.local.jsonc --persist-to .wrangler/state",
+    "dev:secrets": "node scripts/setup-local-secrets.mjs"
   },
   "dependencies": {
     "react": "19.2.6",

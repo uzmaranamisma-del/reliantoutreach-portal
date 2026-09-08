@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { responseJson } from '@/lib/response-json';
 import {
   CheckCircle2,
   Eye,
@@ -30,42 +31,58 @@ export default function IntegrationSettings() {
     lastFour: string | null;
   }>(null);
   useEffect(() => {
-    void fetch('/api/integrations/outreach').then(async (response) => {
-      if (response.ok)
-        setConnection(
-          ((await response.json()) as { connection: typeof connection })
-            .connection,
-        );
-    });
+    void fetch('/api/integrations/outreach')
+      .then(async (response) => {
+        if (response.ok)
+          setConnection(
+            ((await response.json()) as { connection: typeof connection })
+              .connection,
+          );
+      })
+      .catch(() =>
+        setError('Connection status could not be loaded. Please refresh.'),
+      );
   }, []);
   useEffect(() => {
-    void fetch('/api/integrations/email').then(async (response) => {
-      if (response.ok)
-        setEmailConnection(
-          ((await response.json()) as { connection: typeof emailConnection })
-            .connection,
-        );
-    });
+    void fetch('/api/integrations/email')
+      .then(async (response) => {
+        if (response.ok)
+          setEmailConnection(
+            ((await response.json()) as { connection: typeof emailConnection })
+              .connection,
+          );
+      })
+      .catch(() =>
+        setEmailMessage(
+          'Email connection status could not be loaded. Please refresh.',
+        ),
+      );
   }, []);
   async function saveEmail(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setEmailSaving(true);
     setEmailMessage('');
-    const response = await fetch('/api/integrations/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: emailApiKey, fromEmail }),
-    });
-    const result = (await response.json()) as {
-      error?: string;
-      connection?: NonNullable<typeof emailConnection>;
-    };
-    if (response.ok && result.connection) {
-      setEmailConnection(result.connection);
-      setEmailApiKey('');
-      setEmailMessage('Invitation email delivery is connected.');
-    } else setEmailMessage(result.error || 'Email setup could not be saved.');
-    setEmailSaving(false);
+    try {
+      const response = await fetch('/api/integrations/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: emailApiKey, fromEmail }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const result = (await responseJson(response)) as {
+        error?: string;
+        connection?: NonNullable<typeof emailConnection>;
+      };
+      if (response.ok && result.connection) {
+        setEmailConnection(result.connection);
+        setEmailApiKey('');
+        setEmailMessage('Invitation email delivery is connected.');
+      } else setEmailMessage(result.error || 'Email setup could not be saved.');
+    } catch {
+      setEmailMessage('Email setup could not be saved. Please try again.');
+    } finally {
+      setEmailSaving(false);
+    }
   }
   async function submit(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
