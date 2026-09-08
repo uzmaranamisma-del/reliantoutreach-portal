@@ -677,7 +677,7 @@
 }
 .client-table-card table {
   width: 100%;
-  min-width: 1160px;
+  min-width: 920px;
   border-collapse: collapse;
 }
 .client-table-card th {
@@ -703,6 +703,28 @@
 .client-table-card td:first-child small {
   margin-top: 4px;
   color: #849188;
+}
+.client-summary-email {
+  color: #28705a;
+  display: block;
+  font-size: 13px;
+  margin-top: 5px;
+  text-decoration: none;
+}
+.client-summary-email:hover {
+  text-decoration: underline;
+}
+.client-package-summary b,
+.client-package-summary small,
+.client-data-summary b,
+.client-data-summary small {
+  display: block;
+}
+.client-package-summary small,
+.client-data-summary small {
+  color: #7a8980;
+  font-size: 12px;
+  margin-top: 4px;
 }
 .client-status {
   display: inline-block;
@@ -2197,6 +2219,46 @@ a {
   animation: onboarding-spin 1s linear infinite;
   height: 17px;
   width: 17px;
+}
+
+.setup-guide {
+  background: #f5f8f4;
+  border: 1px solid #dce7da;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.setup-guide > b {
+  color: #173526;
+  display: block;
+  margin-bottom: 7px;
+}
+
+.setup-guide ol {
+  color: #66766c;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 10px;
+  padding-left: 19px;
+}
+
+.setup-guide a {
+  align-items: center;
+  color: #17633d;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.setup-guide a:hover {
+  text-decoration: underline;
+}
+
+.setup-guide a svg {
+  height: 14px;
+  width: 14px;
 }
 
 .managed-settings {

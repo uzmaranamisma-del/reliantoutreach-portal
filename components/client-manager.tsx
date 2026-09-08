@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleDollarSign,
+  ExternalLink,
   KeyRound,
   Plus,
   RefreshCw,
@@ -56,6 +57,7 @@ export default function ClientManager() {
   const [notice, setNotice] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [onboarding, setOnboarding] = useState<Client | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [onboardingStep, setOnboardingStep] = useState('');
   const load = useCallback(async () => {
@@ -78,7 +80,7 @@ export default function ClientManager() {
   const visible = useMemo(
     () =>
       clients.filter((client) =>
-        `${client.name} ${client.packageName} ${client.accountManager ?? ''}`
+        `${client.name} ${client.primaryContactEmail ?? ''} ${client.pendingInvite ?? ''} ${client.packageName} ${client.accountManager ?? ''}`
           .toLowerCase()
           .includes(search.toLowerCase()),
       ),
@@ -116,18 +118,44 @@ export default function ClientManager() {
       const records = await load();
       const created = records.find((client) => client.id === result.id);
       setNotice(result.message || 'Client workspace created.');
-      if (created) setOnboarding(created);
+      if (created) {
+        setInviteEmail(created.primaryContactEmail || '');
+        setOnboarding(created);
+      }
     } else setError(result.error || 'Client could not be created.');
     setSaving(false);
   }
   async function setupAndInvite(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!onboarding?.primaryContactEmail) return;
+    if (!onboarding) return;
+    const normalizedEmail = inviteEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError('Enter the client’s valid email address.');
+      return;
+    }
     setSaving(true);
     setError('');
     setNotice('');
     let previewSelected = false;
     try {
+      if (normalizedEmail !== onboarding.primaryContactEmail) {
+        setOnboardingStep('Saving the client email address…');
+        const emailResponse = await fetch('/api/admin/clients', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: onboarding.id,
+            primaryContactEmail: normalizedEmail,
+          }),
+        });
+        const emailResult = (await responseJson(emailResponse)) as {
+          error?: string;
+        };
+        if (!emailResponse.ok)
+          throw new Error(
+            emailResult.error || 'Client email address could not be saved.',
+          );
+      }
       setOnboardingStep('Opening the client workspace…');
       const selectResponse = await fetch('/api/admin/workspace', {
         method: 'POST',
@@ -179,7 +207,7 @@ export default function ClientManager() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: onboarding.primaryContactEmail,
+            email: normalizedEmail,
             role: 'client_admin',
           }),
         });
@@ -191,12 +219,13 @@ export default function ClientManager() {
             invitationResult.error || 'Invitation email could not be sent.',
           );
         setNotice(
-          `${onboarding.name} is synchronized and the client invitation was sent to ${onboarding.primaryContactEmail}.`,
+          `${onboarding.name} is synchronized and the client invitation was sent to ${normalizedEmail}.`,
         );
       } else {
         setNotice(`${onboarding.name} is connected and synchronized.`);
       }
       setOnboarding(null);
+      setInviteEmail('');
       setApiKey('');
     } catch (reason) {
       setError(
@@ -272,49 +301,52 @@ export default function ClientManager() {
             <thead>
               <tr>
                 <th>Client</th>
-                <th>Client email</th>
                 <th>Status</th>
-                <th>Package</th>
-                <th>Monthly credits</th>
-                <th>Monthly emails</th>
-                <th>Price</th>
-                <th>Campaigns</th>
-                <th>Prospects</th>
-                <th>Users</th>
+                <th>Package & usage</th>
+                <th>Workspace data</th>
                 <th>Connection</th>
                 <th>Account manager</th>
-                <th></th>
+                <th>Setup</th>
               </tr>
             </thead>
             <tbody>
               {visible.map((client) => (
                 <tr key={client.id}>
                   <td>
-                    <b>{client.name}</b>
+                    <b className="client-summary-name">{client.name}</b>
+                    <a
+                      className="client-summary-email"
+                      href={`mailto:${client.primaryContactEmail || client.pendingInvite || ''}`}
+                    >
+                      {client.primaryContactEmail || client.pendingInvite || 'Email not added'}
+                    </a>
                     <small>
                       Onboarded{' '}
                       {new Date(client.createdAt).toLocaleDateString()}
                     </small>
                   </td>
                   <td>
-                    {client.primaryContactEmail || client.pendingInvite || '—'}
-                  </td>
-                  <td>
                     <span className={`client-status ${client.status}`}>
                       {client.status}
                     </span>
                   </td>
-                  <td>{client.packageName}</td>
-                  <td>{client.monthlyCredits.toLocaleString()}</td>
-                  <td>{client.monthlyEmailCapacity.toLocaleString()}</td>
-                  <td>
-                    {client.priceCents
-                      ? `$${(client.priceCents / 100).toLocaleString()}`
-                      : '—'}
+                  <td className="client-package-summary">
+                    <b>{client.packageName}</b>
+                    <small>
+                      {client.monthlyCredits.toLocaleString()} credits ·{' '}
+                      {client.monthlyEmailCapacity.toLocaleString()} emails
+                    </small>
+                    <small>
+                      {client.priceCents
+                        ? `$${(client.priceCents / 100).toLocaleString()}/month`
+                        : 'Price not set'}
+                    </small>
                   </td>
-                  <td>{client.campaigns}</td>
-                  <td>{client.prospects.toLocaleString()}</td>
-                  <td>{client.members}</td>
+                  <td className="client-data-summary">
+                    <b>{client.campaigns} campaigns</b>
+                    <small>{client.prospects.toLocaleString()} prospects</small>
+                    <small>{client.members} users</small>
+                  </td>
                   <td>
                     <span
                       className={`connection-dot ${client.integrationStatus}`}
@@ -332,6 +364,12 @@ export default function ClientManager() {
                             disabled={saving}
                             onClick={() => {
                               setError('');
+                              setInviteEmail(
+                                client.primaryContactEmail ||
+                                  client.pendingInvite ||
+                                  '',
+                              );
+                              setApiKey('');
                               setOnboarding(client);
                             }}
                           >
@@ -554,10 +592,28 @@ export default function ClientManager() {
               Client email
               <input
                 type="email"
-                readOnly
-                value={onboarding.primaryContactEmail || ''}
+                required
+                autoComplete="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="client@company.com"
               />
             </label>
+            <div className="setup-guide" aria-label="Client setup steps">
+              <b>Simple setup</b>
+              <ol>
+                <li>Open the API website and copy this client account’s API key.</li>
+                <li>Paste the key below.</li>
+                <li>We will sync the data first, then email the invitation.</li>
+              </ol>
+              <a
+                href="https://app.manyreach.com/api#v2/description/introduction"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open API website <ExternalLink />
+              </a>
+            </div>
             <label>
               Outreach API key
               <input
