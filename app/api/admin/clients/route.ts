@@ -7,7 +7,10 @@ import {
   workspaces,
 } from '@/db/schema';
 import { getWorkspaceContext } from '@/lib/workspace-context';
-import { deliverWorkspaceInvitation } from '@/lib/invitation-email';
+import {
+  deliverWorkspaceInvitation,
+  InvitationDeliveryError,
+} from '@/lib/invitation-email';
 import { and, count, desc, eq } from 'drizzle-orm';
 
 const json = (body: unknown, status = 200) =>
@@ -154,7 +157,7 @@ export async function POST(request: Request) {
     .where(
       and(
         eq(integrations.kind, 'invitation_email'),
-        eq(integrations.status, 'connected'),
+        eq(integrations.status, 'configured'),
       ),
     )
     .orderBy(desc(integrations.updatedAt))
@@ -219,7 +222,18 @@ export async function POST(request: Request) {
       workspaceName: name,
     });
     return json({ created: true, id, invitationDelivered: true }, 201);
-  } catch {
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'client_invitation_delivery_failed',
+        code:
+          error instanceof InvitationDeliveryError
+            ? error.providerCode || `HTTP_${error.status}`
+            : error instanceof Error
+              ? error.name
+              : 'UNKNOWN',
+      }),
+    );
     return json(
       {
         created: true,

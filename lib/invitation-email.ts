@@ -2,6 +2,16 @@ import { decryptSecret } from '@/lib/crypto';
 
 type InvitationRole = 'client_admin' | 'client_viewer';
 
+export class InvitationDeliveryError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly providerCode?: string,
+  ) {
+    super('EMAIL_DELIVERY_FAILED');
+    this.name = 'InvitationDeliveryError';
+  }
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')
@@ -41,5 +51,10 @@ export async function deliverWorkspaceInvitation(input: {
     }),
     signal: AbortSignal.timeout(15_000),
   });
-  if (!response.ok) throw new Error('EMAIL_DELIVERY_FAILED');
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as {
+      name?: string;
+    } | null;
+    throw new InvitationDeliveryError(response.status, errorBody?.name);
+  }
 }

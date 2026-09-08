@@ -4,7 +4,10 @@ import {
   workspaceInvitations,
   workspaceMembers,
 } from '@/db/schema';
-import { deliverWorkspaceInvitation } from '@/lib/invitation-email';
+import {
+  deliverWorkspaceInvitation,
+  InvitationDeliveryError,
+} from '@/lib/invitation-email';
 import { getWorkspaceContext } from '@/lib/workspace-context';
 import { and, desc, eq } from 'drizzle-orm';
 
@@ -113,16 +116,35 @@ export async function POST(request: Request) {
         eq(workspaceInvitations.status, 'pending'),
       ),
     );
-  const [emailIntegration] = await context.db
+  let [emailIntegration] = await context.db
     .select({ credentialsCiphertext: integrations.credentialsCiphertext })
     .from(integrations)
     .where(
       and(
         eq(integrations.workspaceId, context.workspaceId),
         eq(integrations.kind, 'invitation_email'),
+        eq(integrations.status, 'configured'),
       ),
     )
+    .orderBy(desc(integrations.updatedAt))
     .limit(1);
+
+  // Invitation delivery is platform infrastructure. Client workspaces usually do
+  // not store their own mail credential, so fall back to the latest configured
+  // ReliantOutreach sender without exposing it to the inviting user.
+  if (!emailIntegration) {
+    [emailIntegration] = await context.db
+      .select({ credentialsCiphertext: integrations.credentialsCiphertext })
+      .from(integrations)
+      .where(
+        and(
+          eq(integrations.kind, 'invitation_email'),
+          eq(integrations.status, 'configured'),
+        ),
+      )
+      .orderBy(desc(integrations.updatedAt))
+      .limit(1);
+  }
   if (!emailIntegration)
     return Response.json(
       { error: 'Set up invitation email delivery in Settings first.' },
@@ -152,7 +174,18 @@ export async function POST(request: Request) {
       role,
       workspaceName: context.workspaceName,
     });
-  } catch {
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'invitation_delivery_failed',
+        code:
+          error instanceof InvitationDeliveryError
+            ? error.providerCode || `HTTP_${error.status}`
+            : error instanceof Error
+              ? error.name
+              : 'UNKNOWN',
+      }),
+    );
     await context.db
       .update(workspaceInvitations)
       .set({ status: 'failed', updatedAt: new Date() })
