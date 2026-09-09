@@ -1,4 +1,7 @@
-import { requireChatGPTUser } from '@/app/chatgpt-auth';
+import {
+  chatGPTSignOutPath,
+  requireChatGPTUser,
+} from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
 import {
   users,
@@ -17,9 +20,13 @@ export const dynamic = 'force-dynamic';
 function InvitationMessage({
   title,
   message,
+  actionHref = '/login',
+  actionLabel = 'Return to sign in',
 }: {
   title: string;
   message: string;
+  actionHref?: string;
+  actionLabel?: string;
 }) {
   return (
     <main className="auth-page">
@@ -43,8 +50,8 @@ function InvitationMessage({
           </span>
           <h2>{title}</h2>
           <p>{message}</p>
-          <a className="auth-primary" href="/login">
-            Return to sign in <ArrowRight />
+          <a className="auth-primary" href={actionHref} target="_top">
+            {actionLabel} <ArrowRight />
           </a>
         </div>
       </section>
@@ -58,6 +65,7 @@ export default async function AcceptInvitationPage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const token = (await searchParams).token?.trim() ?? '';
+  const invitationPath = `/accept-invitation?token=${encodeURIComponent(token)}`;
   if (!/^[a-f0-9]{64}$/i.test(token))
     return (
       <InvitationMessage
@@ -66,9 +74,7 @@ export default async function AcceptInvitationPage({
       />
     );
 
-  const auth = await requireChatGPTUser(
-    `/accept-invitation?token=${encodeURIComponent(token)}`,
-  );
+  const auth = await requireChatGPTUser(invitationPath);
   const db = getDb();
   const now = new Date();
   const tokenHash = await hashInvitationToken(token);
@@ -104,6 +110,8 @@ export default async function AcceptInvitationPage({
       <InvitationMessage
         title="Use the invited email account"
         message={`This private invitation was sent to ${invitation.email}. Sign in using that email address.`}
+        actionHref={chatGPTSignOutPath(invitationPath)}
+        actionLabel="Switch to invited account"
       />
     );
 
