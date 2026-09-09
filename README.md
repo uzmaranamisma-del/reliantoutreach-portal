@@ -27,8 +27,8 @@ Open `http://localhost:3000`. Create the first administrator in Supabase under *
 - `APP_URL`: public application URL, such as `https://app.reliantoutreach.com`
 - `DATABASE_URL`: Supabase PostgreSQL connection string
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase public anon key
-- `SUPABASE_SERVICE_ROLE_KEY`: server-only service role key
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase public publishable key
+- `SUPABASE_SECRET_KEY`: server-only Supabase secret key
 - `SUPER_ADMIN_EMAILS`: comma-separated internal administrator emails
 - `ENCRYPTION_KEY`: 32-byte base64 or 64-character hex key used for stored credentials
 - `WEBHOOK_SECRET`: secret used to validate inbound webhook requests
@@ -38,7 +38,7 @@ Never commit `.env.local` or any real credential. Provider keys are entered by a
 
 ## Database
 
-Generate a migration after schema changes with `npm run db:generate`. Apply committed migrations with `npm run db:migrate`. The PostgreSQL migrations live in `drizzle-pg/`; the older `drizzle/` directory is retained only as historical migration data and is not used by the production configuration.
+Generate a migration after schema changes with `npm run db:generate`. Apply committed migrations with `npm run db:migrate`. Production builds automatically apply pending committed migrations when `DATABASE_URL` is configured. The PostgreSQL migrations live in `drizzle-pg/`; the older `drizzle/` directory is retained only as historical migration data and is not used by the production configuration.
 
 All business records are workspace-owned. PostgreSQL row-level security is enabled as a defense-in-depth boundary, while application routes also enforce authentication, workspace membership, and role permissions.
 
