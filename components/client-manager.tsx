@@ -584,8 +584,19 @@ export default function ClientManager() {
               >
                 <RefreshCw /> Data synchronized
               </span>
-              <span className={onboarding.members > 0 ? 'done' : ''}>
-                <Send /> Client invited
+              <span
+                className={
+                  onboarding.members > 0 || onboarding.pendingInvite
+                    ? 'done'
+                    : ''
+                }
+              >
+                <Send />
+                {onboarding.members > 0
+                  ? 'Client joined'
+                  : onboarding.pendingInvite
+                    ? 'Invitation sent'
+                    : 'Invite client'}
               </span>
             </div>
             <label>
@@ -656,7 +667,9 @@ export default function ClientManager() {
               <button className="primary-action" disabled={saving}>
                 {saving
                   ? 'Completing onboarding…'
-                  : onboarding.members === 0
+                  : onboarding.pendingInvite
+                    ? 'Resend client invite'
+                    : onboarding.members === 0
                     ? 'Sync data & send invite'
                     : 'Sync client data'}
               </button>
