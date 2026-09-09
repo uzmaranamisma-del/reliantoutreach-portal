@@ -1,12 +1,18 @@
 import { ArrowRight, CheckCircle2, LockKeyhole } from 'lucide-react';
 import {
-  chatGPTSignInPath,
   chatGPTSignOutPath,
   getChatGPTUser,
+  safeRelativeReturnPath,
 } from '@/app/chatgpt-auth';
+import { LoginForm } from '@/components/login-form';
 export const dynamic = 'force-dynamic';
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
   const user = await getChatGPTUser();
+  const returnTo = safeRelativeReturnPath((await searchParams).returnTo ?? '/dashboard');
   return (
     <main className="auth-page">
       <section className="auth-brand">
@@ -72,22 +78,14 @@ export default async function LoginPage() {
               </a>
             </>
           ) : (
-            <a
-              className="auth-primary"
-              href={chatGPTSignInPath('/dashboard')}
-              target="_top"
-            >
-              Sign in securely <ArrowRight />
-            </a>
+            <LoginForm returnTo={returnTo} />
           )}
           <div className="auth-divider">
             <i />
             New to ReliantOutreach?
             <i />
           </div>
-          <a className="auth-secondary" href="/signup">
-            Register new user
-          </a>
+          <span className="auth-secondary auth-disabled">Registration requires a private invitation</span>
           <small className="auth-note">
             Access is protected with secure identity verification and encrypted
             sessions.

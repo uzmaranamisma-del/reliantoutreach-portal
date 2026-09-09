@@ -1,6 +1,16 @@
-import { ArrowRight, UserPlus } from 'lucide-react';
+import { RegistrationForm } from '@/components/registration-form';
+import { UserPlus } from 'lucide-react';
 export const dynamic = 'force-dynamic';
-export default async function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string; token?: string }>;
+}) {
+  const values = await searchParams;
+  const email = values.email?.trim().toLowerCase() ?? '';
+  const token = values.token?.trim() ?? '';
+  const validInvitation =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && /^[a-f0-9]{64}$/i.test(token);
   return (
     <main className="auth-page">
       <section className="auth-brand">
@@ -30,24 +40,16 @@ export default async function SignupPage() {
           <span className="auth-lock">
             <UserPlus />
           </span>
-          <h2>Request client access</h2>
-          <p>
-            ReliantOutreach is invitation-only. Your workspace is prepared and
-            synchronized before access is issued.
-          </p>
-          <a className="auth-primary" href="/login">
-            Sign in with an invitation <ArrowRight />
-          </a>
+          <h2>{validInvitation ? 'Create your password' : 'Private access only'}</h2>
+          <p>{validInvitation ? 'Set your password to securely access the workspace prepared for you.' : 'Open the private invitation sent by ReliantOutreach to register your account.'}</p>
+          {validInvitation ? <RegistrationForm email={email} token={token} /> : null}
           <div className="auth-divider">
             <i />
             Need access?
             <i />
           </div>
-          <a
-            className="auth-secondary"
-            href="mailto:info@reliantoutreach.com?subject=Client portal access"
-          >
-            Contact your ReliantOutreach account manager
+          <a className="auth-secondary" href={validInvitation ? '/login' : 'mailto:info@reliantoutreach.com?subject=Client portal access'}>
+            {validInvitation ? 'Already registered? Sign in' : 'Contact your ReliantOutreach account manager'}
           </a>
           <small className="auth-note">
             Use the same email address that received your private invitation.

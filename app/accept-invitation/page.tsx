@@ -1,6 +1,6 @@
 import {
   chatGPTSignOutPath,
-  requireChatGPTUser,
+  getChatGPTUser,
 } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
 import {
@@ -74,7 +74,6 @@ export default async function AcceptInvitationPage({
       />
     );
 
-  const auth = await requireChatGPTUser(invitationPath);
   const db = getDb();
   const now = new Date();
   const tokenHash = await hashInvitationToken(token);
@@ -104,6 +103,11 @@ export default async function AcceptInvitationPage({
         title="Invitation has expired"
         message="This invitation is no longer active. Ask ReliantOutreach to resend it."
       />
+    );
+  const auth = await getChatGPTUser();
+  if (!auth)
+    redirect(
+      `/signup?email=${encodeURIComponent(invitation.email)}&token=${encodeURIComponent(token)}`,
     );
   if (invitation.email.toLowerCase() !== auth.email.toLowerCase())
     return (

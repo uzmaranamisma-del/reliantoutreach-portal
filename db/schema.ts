@@ -1,18 +1,20 @@
 import {
+  doublePrecision,
   index,
   integer,
-  real,
-  sqliteTable,
+  jsonb,
+  pgTable,
   text,
+  timestamp,
   uniqueIndex,
-} from 'drizzle-orm/sqlite-core';
+} from 'drizzle-orm/pg-core';
 const id = () => text('id').primaryKey();
 const wid = () => text('workspace_id').notNull();
 const times = {
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
 };
-export const users = sqliteTable('users', {
+export const users = pgTable('users', {
   id: id(),
   authSubject: text('auth_subject').notNull().unique(),
   email: text('email').notNull(),
@@ -21,7 +23,7 @@ export const users = sqliteTable('users', {
   timezone: text('timezone').notNull().default('UTC'),
   ...times,
 });
-export const workspaces = sqliteTable('workspaces', {
+export const workspaces = pgTable('workspaces', {
   id: id(),
   name: text('name').notNull(),
   primaryContactEmail: text('primary_contact_email'),
@@ -33,11 +35,11 @@ export const workspaces = sqliteTable('workspaces', {
     .notNull()
     .default(10000),
   priceCents: integer('price_cents').notNull().default(0),
-  renewalDate: integer('renewal_date', { mode: 'timestamp' }),
+  renewalDate: timestamp('renewal_date', { withTimezone: true, mode: 'date' }),
   accountManager: text('account_manager'),
   ...times,
 });
-export const workspaceMembers = sqliteTable(
+export const workspaceMembers = pgTable(
   'workspace_members',
   {
     id: id(),
@@ -56,7 +58,7 @@ export const workspaceMembers = sqliteTable(
     index('membership_user').on(t.userId),
   ],
 );
-export const workspaceInvitations = sqliteTable(
+export const workspaceInvitations = pgTable(
   'workspace_invitations',
   {
     id: id(),
@@ -68,8 +70,8 @@ export const workspaceInvitations = sqliteTable(
     invitedByUserId: text('invited_by_user_id')
       .notNull()
       .references(() => users.id),
-    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
-    acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [
@@ -77,7 +79,7 @@ export const workspaceInvitations = sqliteTable(
     index('invitation_email').on(t.email, t.status),
   ],
 );
-export const companies = sqliteTable(
+export const companies = pgTable(
   'companies',
   {
     id: id(),
@@ -88,13 +90,13 @@ export const companies = sqliteTable(
     linkedinUrl: text('linkedin_url'),
     industry: text('industry'),
     employeeCount: integer('employee_count'),
-    revenue: real('revenue'),
+    revenue: doublePrecision('revenue'),
     country: text('country'),
     ...times,
   },
   (t) => [index('companies_workspace').on(t.workspaceId)],
 );
-export const campaigns = sqliteTable(
+export const campaigns = pgTable(
   'campaigns',
   {
     id: id(),
@@ -104,21 +106,21 @@ export const campaigns = sqliteTable(
     status: text('status').notNull(),
     provider: text('provider'),
     externalIdCiphertext: text('external_id_ciphertext'),
-    startDate: integer('start_date', { mode: 'timestamp' }),
-    endDate: integer('end_date', { mode: 'timestamp' }),
+    startDate: timestamp('start_date', { withTimezone: true, mode: 'date' }),
+    endDate: timestamp('end_date', { withTimezone: true, mode: 'date' }),
     prospectCount: integer('prospect_count').notNull().default(0),
     sentCount: integer('sent_count').notNull().default(0),
     deliveredCount: integer('delivered_count').notNull().default(0),
     replyCount: integer('reply_count').notNull().default(0),
     positiveReplyCount: integer('positive_reply_count').notNull().default(0),
-    settings: text('settings', { mode: 'json' }),
-    lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
-    archivedAt: integer('archived_at', { mode: 'timestamp' }),
+    settings: jsonb('settings'),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true, mode: 'date' }),
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [index('campaigns_workspace_status').on(t.workspaceId, t.status)],
 );
-export const campaignSteps = sqliteTable(
+export const campaignSteps = pgTable(
   'campaign_steps',
   {
     id: id(),
@@ -136,12 +138,12 @@ export const campaignSteps = sqliteTable(
     waitUnit: text('wait_unit'),
     subject: text('subject'),
     body: text('body'),
-    settings: text('settings', { mode: 'json' }),
+    settings: jsonb('settings'),
     ...times,
   },
   (t) => [index('campaign_steps_campaign').on(t.campaignId, t.stepNumber)],
 );
-export const prospects = sqliteTable(
+export const prospects = pgTable(
   'prospects',
   {
     id: id(),
@@ -162,8 +164,8 @@ export const prospects = sqliteTable(
     externalIdCiphertext: text('external_id_ciphertext'),
     status: text('status').notNull().default('new'),
     notes: text('notes'),
-    customFields: text('custom_fields', { mode: 'json' }),
-    archivedAt: integer('archived_at', { mode: 'timestamp' }),
+    customFields: jsonb('custom_fields'),
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [
@@ -174,7 +176,7 @@ export const prospects = sqliteTable(
     index('prospect_workspace_status').on(t.workspaceId, t.status),
   ],
 );
-export const campaignProspects = sqliteTable(
+export const campaignProspects = pgTable(
   'campaign_prospects',
   {
     id: id(),
@@ -187,14 +189,14 @@ export const campaignProspects = sqliteTable(
       .references(() => prospects.id),
     currentStep: integer('current_step'),
     status: text('status').notNull(),
-    lastContactedAt: integer('last_contacted_at', { mode: 'timestamp' }),
+    lastContactedAt: timestamp('last_contacted_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [
     uniqueIndex('campaign_prospect_unique').on(t.campaignId, t.prospectId),
   ],
 );
-export const replies = sqliteTable(
+export const replies = pgTable(
   'replies',
   {
     id: id(),
@@ -209,12 +211,12 @@ export const replies = sqliteTable(
     body: text('body').notNull(),
     providerClassification: text('provider_classification'),
     classification: text('classification'),
-    receivedAt: integer('received_at', { mode: 'timestamp' }).notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' }).notNull(),
     ...times,
   },
   (t) => [index('replies_workspace_received').on(t.workspaceId, t.receivedAt)],
 );
-export const messages = sqliteTable(
+export const messages = pgTable(
   'messages',
   {
     id: id(),
@@ -229,12 +231,12 @@ export const messages = sqliteTable(
     subject: text('subject'),
     body: text('body').notNull(),
     openCount: integer('open_count').notNull().default(0),
-    occurredAt: integer('occurred_at', { mode: 'timestamp' }).notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' }).notNull(),
     ...times,
   },
   (t) => [index('messages_workspace_time').on(t.workspaceId, t.occurredAt)],
 );
-export const meetings = sqliteTable(
+export const meetings = pgTable(
   'meetings',
   {
     id: id(),
@@ -244,7 +246,7 @@ export const meetings = sqliteTable(
       .references(() => prospects.id),
     campaignId: text('campaign_id').references(() => campaigns.id),
     ownerId: text('owner_id').references(() => users.id),
-    startsAt: integer('starts_at', { mode: 'timestamp' }).notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true, mode: 'date' }).notNull(),
     timezone: text('timezone').notNull(),
     meetingUrl: text('meeting_url'),
     status: text('status').notNull(),
@@ -254,7 +256,7 @@ export const meetings = sqliteTable(
   },
   (t) => [index('meetings_workspace_start').on(t.workspaceId, t.startsAt)],
 );
-export const opportunities = sqliteTable(
+export const opportunities = pgTable(
   'opportunities',
   {
     id: id(),
@@ -262,16 +264,16 @@ export const opportunities = sqliteTable(
     prospectId: text('prospect_id').references(() => prospects.id),
     name: text('name').notNull(),
     ownerId: text('owner_id').references(() => users.id),
-    estimatedValue: real('estimated_value').notNull().default(0),
+    estimatedValue: doublePrecision('estimated_value').notNull().default(0),
     probability: integer('probability').notNull().default(0),
     stage: text('stage').notNull(),
-    expectedCloseDate: integer('expected_close_date', { mode: 'timestamp' }),
+    expectedCloseDate: timestamp('expected_close_date', { withTimezone: true, mode: 'date' }),
     notes: text('notes'),
     ...times,
   },
   (t) => [index('opportunities_workspace_stage').on(t.workspaceId, t.stage)],
 );
-export const mailboxes = sqliteTable(
+export const mailboxes = pgTable(
   'mailboxes',
   {
     id: id(),
@@ -285,13 +287,13 @@ export const mailboxes = sqliteTable(
     dailyLimit: integer('daily_limit'),
     sentToday: integer('sent_today').notNull().default(0),
     health: text('health').notNull(),
-    settings: text('settings', { mode: 'json' }),
-    lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
+    settings: jsonb('settings'),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [uniqueIndex('mailbox_workspace_email').on(t.workspaceId, t.email)],
 );
-export const domains = sqliteTable(
+export const domains = pgTable(
   'domains',
   {
     id: id(),
@@ -303,13 +305,13 @@ export const domains = sqliteTable(
     dmarcStatus: text('dmarc_status'),
     mxStatus: text('mx_status'),
     dkimSelector: text('dkim_selector'),
-    lastCheckedAt: integer('last_checked_at', { mode: 'timestamp' }),
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true, mode: 'date' }),
     notes: text('notes'),
     ...times,
   },
   (t) => [uniqueIndex('domain_workspace_unique').on(t.workspaceId, t.domain)],
 );
-export const files = sqliteTable(
+export const files = pgTable(
   'files',
   {
     id: id(),
@@ -323,12 +325,12 @@ export const files = sqliteTable(
     uploadedBy: text('uploaded_by')
       .notNull()
       .references(() => users.id),
-    deletedAt: integer('deleted_at', { mode: 'timestamp' }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [index('files_workspace').on(t.workspaceId)],
 );
-export const suppressionEntries = sqliteTable(
+export const suppressionEntries = pgTable(
   'suppression_entries',
   {
     id: id(),
@@ -346,7 +348,7 @@ export const suppressionEntries = sqliteTable(
     ),
   ],
 );
-export const webhookEvents = sqliteTable(
+export const webhookEvents = pgTable(
   'webhook_events',
   {
     id: id(),
@@ -356,14 +358,14 @@ export const webhookEvents = sqliteTable(
     eventType: text('event_type').notNull(),
     payloadCiphertext: text('payload_ciphertext'),
     status: text('status').notNull(),
-    processedAt: integer('processed_at', { mode: 'timestamp' }),
+    processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [
     uniqueIndex('webhook_provider_event').on(t.provider, t.providerEventId),
   ],
 );
-export const syncJobs = sqliteTable(
+export const syncJobs = pgTable(
   'sync_jobs',
   {
     id: id(),
@@ -374,13 +376,13 @@ export const syncJobs = sqliteTable(
     recordsProcessed: integer('records_processed').notNull().default(0),
     attemptCount: integer('attempt_count').notNull().default(0),
     safeErrorCode: text('safe_error_code'),
-    startedAt: integer('started_at', { mode: 'timestamp' }),
-    finishedAt: integer('finished_at', { mode: 'timestamp' }),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }),
+    finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [index('sync_jobs_workspace_status').on(t.workspaceId, t.status)],
 );
-export const integrations = sqliteTable(
+export const integrations = pgTable(
   'integrations',
   {
     id: id(),
@@ -389,12 +391,12 @@ export const integrations = sqliteTable(
     credentialsCiphertext: text('credentials_ciphertext').notNull(),
     status: text('status').notNull(),
     lastFour: text('last_four'),
-    lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true, mode: 'date' }),
     ...times,
   },
   (t) => [uniqueIndex('integration_workspace_kind').on(t.workspaceId, t.kind)],
 );
-export const activityLogs = sqliteTable(
+export const activityLogs = pgTable(
   'activity_logs',
   {
     id: id(),
@@ -403,8 +405,8 @@ export const activityLogs = sqliteTable(
     action: text('action').notNull(),
     entityType: text('entity_type').notNull(),
     entityId: text('entity_id'),
-    metadata: text('metadata', { mode: 'json' }),
-    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
   },
   (t) => [index('activity_workspace_time').on(t.workspaceId, t.createdAt)],
 );

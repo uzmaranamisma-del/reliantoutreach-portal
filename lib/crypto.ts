@@ -1,5 +1,3 @@
-import { env } from 'cloudflare:workers';
-
 const encoder = new TextEncoder();
 export class EncryptionConfigurationError extends Error {
   constructor() {
@@ -9,8 +7,8 @@ export class EncryptionConfigurationError extends Error {
 
 function encryptionKeyBytes() {
   try {
-    if (!env.ENCRYPTION_KEY) throw new EncryptionConfigurationError();
-    const bytes = fromBase64(env.ENCRYPTION_KEY);
+    if (!process.env.ENCRYPTION_KEY) throw new EncryptionConfigurationError();
+    const bytes = fromBase64(process.env.ENCRYPTION_KEY);
     if (bytes.byteLength !== 32) throw new EncryptionConfigurationError();
     return bytes;
   } catch {

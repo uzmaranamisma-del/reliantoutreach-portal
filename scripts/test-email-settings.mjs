@@ -13,9 +13,9 @@ const cryptoSource = await readFile(
 const loadCrypto = (key) =>
   import(
     moduleUrl(
-      cryptoSource.replace(
-        "import { env } from 'cloudflare:workers';",
-        `const env = ${JSON.stringify({ ENCRYPTION_KEY: key })};`,
+      cryptoSource.replaceAll(
+        'process.env.ENCRYPTION_KEY',
+        JSON.stringify(key),
       ),
     )
   );
