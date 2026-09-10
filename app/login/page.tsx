@@ -12,7 +12,9 @@ export default async function LoginPage({
   searchParams: Promise<{ returnTo?: string }>;
 }) {
   const user = await getChatGPTUser();
-  const returnTo = safeRelativeReturnPath((await searchParams).returnTo ?? '/dashboard');
+  const returnTo = safeRelativeReturnPath(
+    (await searchParams).returnTo ?? '/dashboard',
+  );
   return (
     <main className="auth-page">
       <section className="auth-brand">
@@ -82,10 +84,15 @@ export default async function LoginPage({
           )}
           <div className="auth-divider">
             <i />
-            New to ReliantOutreach?
+            Secure access
             <i />
           </div>
-          <span className="auth-secondary auth-disabled">Registration requires a private invitation</span>
+          <span className="auth-secondary auth-disabled">
+            Registration requires a private invitation
+          </span>
+          <a className="auth-secondary" href="/setup-admin">
+            First-time administrator setup
+          </a>
           <small className="auth-note">
             Access is protected with secure identity verification and encrypted
             sessions.
