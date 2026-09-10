@@ -3,19 +3,7 @@ import { getDb } from '@/db';
 import { users, workspaceMembers, workspaces } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
-
-const LOCAL_SITE_OWNER_EMAIL = 'seedy@sites.test';
-
-function isConfiguredSuperAdmin(email: string) {
-  const configured = (process.env.SUPER_ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-  return (
-    email.toLowerCase() === LOCAL_SITE_OWNER_EMAIL ||
-    configured.includes(email.toLowerCase())
-  );
-}
+import { isConfiguredSuperAdmin } from '@/lib/super-admin';
 
 export async function getWorkspaceContext() {
   const auth = await getChatGPTUser();
