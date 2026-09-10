@@ -20,7 +20,7 @@ Private-label, multi-tenant outreach operations portal for ReliantOutreach clien
 4. Run `npm run db:migrate`.
 5. Start the app with `npm run dev`.
 
-Open `http://localhost:3000`. Create the first administrator in Supabase under **Authentication > Users > Add user** and include that email in `SUPER_ADMIN_EMAILS`.
+Open `http://localhost:3000/setup-admin` and create the first administrator using an email included in `SUPER_ADMIN_EMAILS`. The address must be verified from the email Supabase sends before the account can access the portal. The setup route disables itself after the first configured administrator exists.
 
 ## Environment variables
 
