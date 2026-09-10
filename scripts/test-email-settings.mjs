@@ -30,6 +30,29 @@ const invitationTokenSource = await readFile(
   'utf8',
 );
 const invitationTokens = await import(moduleUrl(invitationTokenSource));
+const requestSecuritySource = await readFile(
+  new URL('../lib/request-security.ts', import.meta.url),
+  'utf8',
+);
+const { sameOrigin } = await import(moduleUrl(requestSecuritySource));
+
+test('same-origin validation supports a trusted public URL behind a reverse proxy', () => {
+  const previousAppUrl = process.env.APP_URL;
+  process.env.APP_URL = 'https://app.reliantoutreach.com';
+  try {
+    const proxiedRequest = new Request('http://127.0.0.1:3000/api/auth/login', {
+      headers: { origin: 'https://app.reliantoutreach.com' },
+    });
+    const foreignRequest = new Request('http://127.0.0.1:3000/api/auth/login', {
+      headers: { origin: 'https://attacker.example' },
+    });
+    assert.equal(sameOrigin(proxiedRequest), true);
+    assert.equal(sameOrigin(foreignRequest), false);
+  } finally {
+    if (previousAppUrl === undefined) delete process.env.APP_URL;
+    else process.env.APP_URL = previousAppUrl;
+  }
+});
 
 test('invitation tokens are unique, opaque and hash consistently', async () => {
   const first = invitationTokens.createInvitationToken();
