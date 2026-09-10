@@ -10,6 +10,7 @@ export function sameOrigin(request: Request) {
   }
 
   const allowedOrigins = new Set([new URL(request.url).origin]);
+  allowedOrigins.add('https://app.reliantoutreach.com');
   const appUrl = process.env.APP_URL;
   if (appUrl) {
     try {
