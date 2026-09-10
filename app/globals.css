@@ -1976,6 +1976,17 @@ body {
   color: #7b857e;
   cursor: default;
 }
+.auth-success {
+  margin: 0;
+  border: 1px solid #b9d6bd;
+  border-radius: 9px;
+  background: #eff8ef;
+  color: #174c2b !important;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left !important;
+}
 @media (max-width: 850px) {
   .auth-page {
     grid-template-columns: 1fr;
