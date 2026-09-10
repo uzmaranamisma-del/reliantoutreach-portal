@@ -9,6 +9,7 @@ import {
   InvitationDeliveryError,
 } from '@/lib/invitation-email';
 import { getWorkspaceContext } from '@/lib/workspace-context';
+import { publicAppOrigin } from '@/lib/public-app-url';
 import {
   createInvitationToken,
   hashInvitationToken,
@@ -182,7 +183,7 @@ export async function POST(request: Request) {
       email,
       invitationId,
       invitationToken,
-      portalUrl: new URL(request.url).origin,
+      portalUrl: publicAppOrigin(request),
       role,
       workspaceName: context.workspaceName,
     });
