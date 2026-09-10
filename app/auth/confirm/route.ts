@@ -1,3 +1,4 @@
+import { publicAppOrigin } from '@/lib/public-app-url';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
@@ -11,7 +12,7 @@ const allowedOtpTypes = new Set<EmailOtpType>([
 ]);
 
 export async function GET(request: NextRequest) {
-  const publicOrigin = process.env.APP_URL ?? request.nextUrl.origin;
+  const publicOrigin = publicAppOrigin(request);
   const redirectTo = new URL('/dashboard', publicOrigin);
   const supabase = await createServerSupabaseClient();
   const code = request.nextUrl.searchParams.get('code');
