@@ -1,3 +1,4 @@
+import { publicAppOrigin } from '@/lib/public-app-url';
 import { sameOrigin } from '@/lib/request-security';
 import {
   createServerSupabaseClient,
@@ -66,9 +67,7 @@ export async function POST(request: Request) {
       { status: 409 },
     );
 
-  const appUrl = (
-    process.env.APP_URL ?? 'https://app.reliantoutreach.com'
-  ).replace(/\/$/, '');
+  const appUrl = publicAppOrigin(request);
   const supabase = await createServerSupabaseClient();
   if (existingAdministrator) {
     const { error } = await supabase.auth.resend({
