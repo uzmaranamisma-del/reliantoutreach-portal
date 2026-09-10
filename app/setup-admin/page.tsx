@@ -15,12 +15,21 @@ async function setupAvailable() {
   });
   if (error) throw new Error('Administrator setup status is unavailable.');
   return !data.users.some(
-    (user) => user.email && configured.includes(user.email.toLowerCase()),
+    (user) =>
+      user.email &&
+      user.email_confirmed_at &&
+      configured.includes(user.email.toLowerCase()),
   );
 }
 
-export default async function SetupAdminPage() {
+export default async function SetupAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const available = await setupAvailable();
+  const verificationFailed =
+    (await searchParams).error === 'verification_failed';
   return (
     <main className="auth-page">
       <section className="auth-brand">
@@ -60,6 +69,12 @@ export default async function SetupAdminPage() {
               ? 'Use the authorized administrator email and choose your password. Email verification is required.'
               : 'The platform administrator account already exists. Sign in to continue.'}
           </p>
+          {verificationFailed && available ? (
+            <p className="auth-error" role="alert">
+              That verification link is invalid or expired. Submit the form
+              again to receive a fresh verification email.
+            </p>
+          ) : null}
           {available ? <AdminSetupForm /> : null}
           <a className="auth-secondary" href="/login">
             Return to sign in
