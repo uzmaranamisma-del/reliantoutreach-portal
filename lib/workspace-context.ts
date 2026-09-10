@@ -50,7 +50,6 @@ export async function getWorkspaceContext() {
 
   const configuredSuperAdmin = isConfiguredSuperAdmin(auth.email);
 
-  // The Sites development identity represents the portal owner. In production,
   // SUPER_ADMIN_EMAILS explicitly identifies ReliantOutreach operators.
   if (membership && configuredSuperAdmin && membership.role !== 'super_admin') {
     await db
