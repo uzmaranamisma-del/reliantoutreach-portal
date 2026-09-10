@@ -57,11 +57,10 @@ export async function POST(request: Request) {
       { error: 'Administrator setup status could not be checked.' },
       { status: 502 },
     );
-  if (
-    existing.users.some(
-      (user) => user.email && configured.includes(user.email.toLowerCase()),
-    )
-  )
+  const existingAdministrator = existing.users.find(
+    (user) => user.email && configured.includes(user.email.toLowerCase()),
+  );
+  if (existingAdministrator?.email_confirmed_at)
     return Response.json(
       { error: 'Administrator setup is already complete. Sign in instead.' },
       { status: 409 },
@@ -71,6 +70,25 @@ export async function POST(request: Request) {
     process.env.APP_URL ?? 'https://app.reliantoutreach.com'
   ).replace(/\/$/, '');
   const supabase = await createServerSupabaseClient();
+  if (existingAdministrator) {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: `${appUrl}/auth/confirm?next=/dashboard`,
+      },
+    });
+    if (error)
+      return Response.json(
+        {
+          error:
+            'A fresh verification email could not be sent yet. Please wait briefly and try again.',
+        },
+        { status: 429 },
+      );
+    return Response.json({ verificationRequired: true, resent: true });
+  }
+
   const { error } = await supabase.auth.signUp({
     email,
     password,
