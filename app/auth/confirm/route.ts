@@ -11,9 +11,8 @@ const allowedOtpTypes = new Set<EmailOtpType>([
 ]);
 
 export async function GET(request: NextRequest) {
-  const redirectTo = request.nextUrl.clone();
-  redirectTo.pathname = '/dashboard';
-  redirectTo.search = '';
+  const publicOrigin = process.env.APP_URL ?? request.nextUrl.origin;
+  const redirectTo = new URL('/dashboard', publicOrigin);
   const supabase = await createServerSupabaseClient();
   const code = request.nextUrl.searchParams.get('code');
   const tokenHash = request.nextUrl.searchParams.get('token_hash');
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!error) return NextResponse.redirect(redirectTo);
-  redirectTo.pathname = '/login';
+  redirectTo.pathname = '/setup-admin';
   redirectTo.searchParams.set('error', 'verification_failed');
   return NextResponse.redirect(redirectTo);
 }
